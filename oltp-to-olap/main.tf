@@ -592,15 +592,10 @@ resource "confluent_tableflow_topic" "final-tableflow-topic" {
     secret = confluent_api_key.app-manager-tableflow-api-key.secret
   }
 
-  # The goal is to ensure that confluent_schema.purchase is created before
-  # an instance of confluent_tableflow_topic is created since it requires
-  # a topic with a schema. The provider integration and IAM Roles also have
-  # to be set up before an instance of confluent_tableflow_topic is created.
 
 
   depends_on = [
     module.s3_access_role,
-    # To avoid "Schemaless topic detected for topic stock-trades. Schemaless topics are not supported. Please specify a value schema." error
     confluent_connector.mysql,
     confluent_flink_statement.low_stock_alert_statement,
 
@@ -1043,81 +1038,3 @@ resource "null_resource" "create_snowflake_iceberg_table" {
 
   ]
 }
-
-
-#       docker exec tools bash -c "echo \"CREATE OR REPLACE CATALOG INTEGRATION \"sahil-tableflow-rest-catalog-integration\" \
-#     CATALOG_SOURCE=ICEBERG_REST \
-#     TABLE_FORMAT=ICEBERG \
-#     CATALOG_NAMESPACE='lkc-wmynp5' \
-#     REST_CONFIG = ( \
-#         CATALOG_URI = 'https://tableflow.us-west-2.aws.confluent.cloud/iceberg/catalog/organizations/5f242057-6c74-4ba5-9942-60d363203b93/environments/env-zj0gp7' \
-#         CATALOG_API_TYPE = PUBLIC \
-#     ) \
-#     REST_AUTHENTICATION=( \
-#         TYPE=OAUTH \
-#         OAUTH_CLIENT_ID='5TTA236EBGB3DAJ3' \
-#         OAUTH_CLIENT_SECRET='uUbfjYHvfg9s5t8rRNpGUTN2CbTVcbudhy6Rxu1C7VMtQM0XV78Dbxy70/H7iLZu' \
-#         OAUTH_ALLOWED_SCOPES=('catalog') \
-#     ) \
-# ENABLED=true;\" > catalog.sql"
-
-  #    docker exec tools bash -c "export SNOWSQL_PWD='${var.snowflake_password}' &&  snowsql -a ${var.snowflake_account_name} -r ${var.snowflake_role} -u ${var.snowflake_username} -f catalog.sql
-
-
-
-# q \"CREATE OR REPLACE CATALOG INTEGRATION \"${var.project_name}-rest-catalog-integration\" \
-#     CATALOG_SOURCE=ICEBERG_REST \
-#     TABLE_FORMAT=ICEBERG \
-#     CATALOG_NAMESPACE='${confluent_kafka_cluster.basic.id}' \
-#     REST_CONFIG = ( \
-#         CATALOG_URI = 'https://tableflow.${var.aws_region}.aws.confluent.cloud/iceberg/catalog/organizations/${data.confluent_organization.main.id}/environments/${confluent_environment.confluent_project_env.id}' \
-#         CATALOG_API_TYPE = PUBLIC \
-#     ) \
-#     REST_AUTHENTICATION=( \
-#         TYPE=OAUTH \
-#         OAUTH_CLIENT_ID='${confluent_api_key.app-reader-tableflow-api-key.id}' \
-#         OAUTH_CLIENT_SECRET='${confluent_api_key.app-reader-tableflow-api-key.secret}' \
-#         OAUTH_ALLOWED_SCOPES=('catalog') \
-#     ) \
-#     REFRESH_INTERVAL_SECONDS = 60 \
-# ENABLED=true;\""
-
-      # snowsql \
-      #   --account ${var.snowflake_account_name} \
-      #   --user ${var.snowflake_username} \
-      #   --password ${var.snowflake_password} \
-      #   --role ${var.snowflake_role} \
-      #   -x -q "CREATE OR REPLACE EXTERNAL VOLUME \"sahil_new_external_volume\" STORAGE_LOCATIONS = (( NAME = '${var.project_name}-s3-${var.aws_region}' STORAGE_PROVIDER = 'S3' STORAGE_BASE_URL = 's3://${aws_s3_bucket.tableflow_byob_bucket.bucket}/' STORAGE_AWS_ROLE_ARN = '${aws_iam_role.snowflake_s3_access_role.arn}' STORAGE_AWS_EXTERNAL_ID = 'new_client' )) ALLOW_WRITES = TRUE;"
-
-
-# resource "null_resource" "update_snowflake_iam_role_trust_policy" {
-  
-#   provisioner "local-exec" {
-#     command = <<EOT
-#       export AWS_REGION="${var.aws_region}"
-#       aws iam update-assume-role-policy \
-#   --role-name ${aws_iam_role.snowflake_s3_access_role.name} \
-#   --policy-document '{
-#     "Version": "2012-10-17",
-#     "Statement": [
-#         {
-#             "Effect": "Allow",
-#             "Principal": {
-#                 "AWS": "${jsondecode(snowflake_external_volume.tableflow_s3.describe_output[1].value).STORAGE_AWS_IAM_USER_ARN}"
-#             },
-#             "Action": "sts:AssumeRole",
-#             "Condition": {
-#             }
-#         }
-#     ]
-# }'
-#     EOT
-#   }
-
-#   depends_on = [snowflake_external_volume.tableflow_s3]
-# }
-
-# snowsql  --account ${var.snowflake_account_name} \
-#         --user ${var.snowflake_username} \
-#         --password ${var.snowflake_password} \
-#         --role ${var.snowflake_role}
