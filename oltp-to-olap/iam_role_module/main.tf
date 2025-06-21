@@ -31,7 +31,7 @@ resource "aws_iam_role" "s3_access_role" {
 
 # https://docs.confluent.io/cloud/current/connectors/cc-s3-sink/cc-s3-sink.html#user-account-iam-policy
 resource "aws_iam_policy" "s3_access_policy" {
-  name        = "${var.project_name}_TableflowS3AccessPolicy"
+  name        = "${var.project_name}-tableflow-s3-access-policy"
   description = "IAM policy for accessing the S3 bucket for Confluent Tableflow"
 
   policy = jsonencode({
@@ -44,7 +44,7 @@ resource "aws_iam_policy" "s3_access_policy" {
           "s3:ListBucketMultipartUploads",
           "s3:ListBucket"
         ]
-        Resource = "arn:aws:s3:::${var.project_name}-s3-bucket"
+        Resource = replace("arn:aws:s3:::${var.project_name}-s3-bucket","_","-")
       },
       {
         Effect = "Allow"
@@ -55,7 +55,7 @@ resource "aws_iam_policy" "s3_access_policy" {
           "s3:AbortMultipartUpload",
           "s3:ListMultipartUploadParts"
         ]
-        Resource = "arn:aws:s3:::${var.project_name}-s3-bucket/*"
+        Resource = replace("arn:aws:s3:::${var.project_name}-s3-bucket/*","_","-") 
       }
     ]
   })

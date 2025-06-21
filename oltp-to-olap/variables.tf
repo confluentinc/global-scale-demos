@@ -34,3 +34,28 @@ variable "mysql_database_password" {
   description = "MySql DB password"
   type        = string
 }
+
+variable "snowflake_organization_name" {
+  description = "Snowflake Organization Name"
+  type        = string
+}
+
+variable "snowflake_account_name" {
+  description = "Snowflake Account Name"
+  type        = string
+}
+
+variable "snowflake_username" {
+  description = "Snowflake User Name"
+  type        = string
+}
+
+variable "snowflake_password" {
+  description = "Snowflake Password"
+  type        = string
+}
+
+variable "snowflake_role" {
+  description = "Snowflake User Role"
+  type        = string
+}

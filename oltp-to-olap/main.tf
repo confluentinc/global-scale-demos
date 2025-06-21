@@ -8,7 +8,10 @@ terraform {
       source  = "confluentinc/confluent"
       version = "2.31.0"
     }
-
+    snowflake = {
+      source = "snowflakedb/snowflake"
+      version = "2.1.0"
+    }
     docker = {
       source  = "kreuzwerker/docker"
       version = "~> 3.0"
@@ -29,8 +32,17 @@ provider "aws" {
   region = var.aws_region
 }
 
+provider "snowflake" {
+  organization_name = var.snowflake_organization_name
+  account_name      = var.snowflake_account_name
+  user              = var.snowflake_username
+  password          = var.snowflake_password
+  role              = var.snowflake_role
+  preview_features_enabled = ["snowflake_external_volume_resource"]
+}
+
 resource "aws_db_parameter_group" "mysql_debezium_parameter_group" {
-  name   = "${var.project_name}-mysql-parameter-group"
+  name   = replace("${var.project_name}-mysql-parameter-group", "_", "-")
   family = "mysql8.0"
 
   parameter {
@@ -45,7 +57,7 @@ resource "aws_db_parameter_group" "mysql_debezium_parameter_group" {
 }
 
 resource "aws_db_instance" "mysql_db" {
-  identifier             = "${var.project_name}-mysql"
+  identifier             = replace("${var.project_name}-mysql","_","-")
   allocated_storage      = 10
   engine                 = "mysql"
   engine_version         = "8.0.41"
@@ -106,6 +118,7 @@ resource "docker_image" "products_generator_image" {
     context = "./products_generator"
     dockerfile = "Dockerfile"
   }
+  depends_on = [ aws_db_parameter_group.mysql_debezium_parameter_group ] 
 }
 
 resource "docker_container" "products_generator_container" {
@@ -130,6 +143,7 @@ resource "confluent_environment" "confluent_project_env" {
   stream_governance {
     package = "ESSENTIALS"
   }
+  depends_on = [ aws_db_parameter_group.mysql_debezium_parameter_group ] 
 }
 
 
@@ -160,12 +174,15 @@ data "confluent_schema_registry_cluster" "essentials" {
 resource "confluent_service_account" "app-manager" {
   display_name = "${var.project_name}-app-manager"
   description  = "Service account to manage 'inventory' Kafka cluster"
+  depends_on = [ confluent_environment.confluent_project_env ]
+  
 }
 
 resource "confluent_role_binding" "app-manager-kafka-cluster-admin" {
   principal   = "User:${confluent_service_account.app-manager.id}"
   role_name   = "CloudClusterAdmin"
   crn_pattern = confluent_kafka_cluster.basic.rbac_crn
+  depends_on = [ confluent_environment.confluent_project_env ]
 }
 
 resource "confluent_role_binding" "app-manager-provider-integration-resource-owner" {
@@ -249,6 +266,7 @@ resource "confluent_api_key" "stream_governance_api_key" {
 resource "confluent_service_account" "app-connector" {
   display_name = "${var.project_name}-app-connector567"
   description  = "Service account of S3 Sink Connector to consume from 'stock-trades' topic of 'inventory' Kafka cluster"
+  depends_on = [ confluent_environment.confluent_project_env ]
 }
 
 
@@ -348,6 +366,7 @@ resource "confluent_role_binding" "app-manager-flink-admin" {
   principal   = "User:${confluent_service_account.app-manager.id}"
   role_name   = "FlinkAdmin"
   crn_pattern = confluent_environment.confluent_project_env.resource_name
+  depends_on = [ confluent_environment.confluent_project_env ]
 }
 
 resource "confluent_api_key" "flink-api-key" {
@@ -564,7 +583,7 @@ resource "confluent_tableflow_topic" "final-tableflow-topic" {
 
   // Use BYOB AWS storage
   byob_aws {
-    bucket_name             = "${var.project_name}-s3-bucket"
+    bucket_name             = aws_s3_bucket.tableflow_byob_bucket.bucket
     provider_integration_id = confluent_provider_integration.main.id
   }
 
@@ -762,17 +781,18 @@ resource "confluent_tag_binding" "oltp_stocks" {
 data "aws_caller_identity" "current" {}
 
 locals {
-  customer_s3_access_role_name = "${var.project_name}_TableflowS3AccessRole"
+  customer_s3_access_role_name = "${var.project_name}-tableflow-access-role"
   customer_s3_access_role_arn  = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.customer_s3_access_role_name}"
   
 }
 
 resource "aws_s3_bucket" "tableflow_byob_bucket" {
-  bucket = "${var.project_name}-s3-bucket"
+  bucket = replace("${var.project_name}-s3-bucket","_","-")
   tags = {
     Name        = "Tableflow Demo S3 Bucket"
   }
   force_destroy = true
+  depends_on = [ confluent_environment.confluent_project_env ]
 }
 
 resource "confluent_provider_integration" "main" {
@@ -794,11 +814,12 @@ resource "confluent_provider_integration" "main" {
 
 module "s3_access_role" {
   source                           = "./iam_role_module"
-  s3_bucket_name                   = "${var.project_name}-s3-bucket"
+  s3_bucket_name                   = aws_s3_bucket.tableflow_byob_bucket.bucket
   provider_integration_role_arn    = confluent_provider_integration.main.aws[0].iam_role_arn
   provider_integration_external_id = confluent_provider_integration.main.aws[0].external_id
   customer_role_name               = local.customer_s3_access_role_name
   project_name=var.project_name
+  depends_on = [ confluent_environment.confluent_project_env ]
 }
 
 
@@ -807,6 +828,7 @@ data "confluent_organization" "main" {}
 resource "confluent_service_account" "app-reader" {
   display_name = "${var.project_name}-app-reader"
   description  = "Service account of Iceberg Reader applications or compute engines."
+  depends_on = [ confluent_environment.confluent_project_env ]
 }
 
 resource "confluent_api_key" "app-reader-tableflow-api-key" {
@@ -838,29 +860,70 @@ resource "confluent_role_binding" "app-reader-environment-admin" {
   principal   = "User:${confluent_service_account.app-reader.id}"
   role_name   = "EnvironmentAdmin"
   crn_pattern = confluent_environment.confluent_project_env.resource_name
+  depends_on = [ confluent_environment.confluent_project_env ]
 }
 
+
+
+locals {
+  snowflake_s3_access_role_name = "${var.project_name}-snowflake-access-role"
+  snowflake_s3_access_role_arn  = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.snowflake_s3_access_role_name}"  
+}
+
+resource "snowflake_warehouse" "warehouse" {
+  name                                = "${var.project_name}-warehouse"
+  warehouse_size                      = "X-SMALL"
+    depends_on = [
+    confluent_tableflow_topic.final-tableflow-topic
+  ]
+}
+
+resource "snowflake_database" "primary" {
+  name = "${var.project_name}-database"
+  depends_on = [
+    snowflake_warehouse.warehouse
+  ]
+}
+
+resource "snowflake_external_volume" "external_volume" {
+  name  = "${var.project_name}-external-volume"
+  storage_location  { 
+    storage_provider = "S3"
+    storage_aws_role_arn = local.snowflake_s3_access_role_arn
+    storage_base_url = "s3://${aws_s3_bucket.tableflow_byob_bucket.bucket}/"
+    storage_location_name = "${var.project_name}-${var.aws_region}-s3"
+  }
+
+  allow_writes = true
+  depends_on = [
+    confluent_provider_integration.main,
+  ]
+}
 
 
 resource "aws_iam_role" "snowflake_s3_access_role" {
   name = "${var.project_name}-snowflake-access-role"
   description = "IAM role for accessing S3 with a trust policy for Snowflake"
-  assume_role_policy = jsonencode({
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Principal": {
-                "AWS": "${data.aws_caller_identity.current.id}"
-            },
-            "Action": "sts:AssumeRole",
-            "Condition": {
-            }
+  
+      assume_role_policy = jsonencode({
+    Version   = "2012-10-17"
+    Statement = [
+      {
+        Effect    = "Allow"
+        Principal = {
+          AWS = jsondecode(snowflake_external_volume.external_volume.describe_output[1].value).STORAGE_AWS_IAM_USER_ARN
         }
+        Action    = "sts:AssumeRole"
+        Condition = {
+          StringEquals = {
+            "sts:ExternalId" = jsondecode(snowflake_external_volume.external_volume.describe_output[1].value).STORAGE_AWS_EXTERNAL_ID
+          }
+        }
+      }
     ]
-})
+  })
   depends_on = [
-    confluent_provider_integration.main,
+    snowflake_external_volume.external_volume,
   ]
 }
 
@@ -901,39 +964,131 @@ resource "aws_iam_policy" "snowflake_s3_access_policy" {
    ]
 })
   depends_on = [
-    confluent_provider_integration.main,
+    snowflake_external_volume.external_volume,
   ]
 }
 
 resource "aws_iam_role_policy_attachment" "snowflake_role_policy_attachment" {
   role       = aws_iam_role.snowflake_s3_access_role.name
   policy_arn = aws_iam_policy.snowflake_s3_access_policy.arn
+  depends_on = [
+    aws_iam_policy.snowflake_s3_access_policy,
+    aws_iam_role.snowflake_s3_access_role
+
+  ]
 }
 
-# resource "snowflake_warehouse" "warehouse" {
-#   name                                = "${var.project_name}-warehouse"
-#   warehouse_size                      = "X-SMALL"
-#     depends_on = [
-#     confluent_provider_integration.main,
-#   ]
-# }
 
-# resource "null_resource" "create_snowflake_external_volume" {
-#   provisioner "local-exec" {
-#     command = <<EOT
-#       snow sql \
-#         --account ${var.snowflake_account_name} \
-#         --user ${var.snowflake_username} \
-#         --password ${var.snowflake_password} \
-#         --role ${var.snowflake_role} \
-#         -x -q "CREATE OR REPLACE EXTERNAL VOLUME \"sahil_new_external_volume\" STORAGE_LOCATIONS = (( NAME = '${var.project_name}-s3-${var.aws_region}' STORAGE_PROVIDER = 'S3' STORAGE_BASE_URL = 's3://${aws_s3_bucket.tableflow_byob_bucket.bucket}/' STORAGE_AWS_ROLE_ARN = '${aws_iam_role.snowflake_s3_access_role.arn}' STORAGE_AWS_EXTERNAL_ID = 'new_client' )) ALLOW_WRITES = TRUE;"
-#     EOT
-#   }
 
-#   depends_on = [
-#     aws_iam_role_policy_attachment.snowflake_role_policy_attachment
-#   ]
-# }
+resource "docker_image" "tools_image" {
+  name = "demotools:latest"
+  build {
+    context = "./tools"
+    dockerfile = "Dockerfile"
+  }
+  depends_on = [ snowflake_external_volume.external_volume ]
+}
+
+resource "docker_container" "tools_container" {
+  name  = "tools"
+  image = docker_image.tools_image.name
+  start = true
+  must_run = true
+  depends_on = [docker_container.tools_container]
+    command = [
+   "sleep",
+   "infinity"
+  ]
+}
+
+
+resource "null_resource" "create_snowflake_external_catalog" {
+  provisioner "local-exec" {
+    command = <<EOT
+        docker exec tools bash -c "export SNOWSQL_PWD='${var.snowflake_password}' &&  snowsql -a ${var.snowflake_account_name} -r ${var.snowflake_role} -u ${var.snowflake_username} -w ${var.project_name}-warehouse -q \"CREATE OR REPLACE CATALOG INTEGRATION \\\"${var.project_name}-rest-catalog-integration\\\" \
+        CATALOG_SOURCE=ICEBERG_REST \
+        TABLE_FORMAT=ICEBERG \
+        CATALOG_NAMESPACE='${confluent_kafka_cluster.basic.id}' \
+        REST_CONFIG = ( \
+        CATALOG_URI = 'https://tableflow.${var.aws_region}.aws.confluent.cloud/iceberg/catalog/organizations/${data.confluent_organization.main.id}/environments/${confluent_environment.confluent_project_env.id}' \
+        CATALOG_API_TYPE = PUBLIC \
+        ) \
+        REST_AUTHENTICATION=( \
+        TYPE=OAUTH \
+        OAUTH_CLIENT_ID='${confluent_api_key.app-reader-tableflow-api-key.id}' \
+        OAUTH_CLIENT_SECRET='${confluent_api_key.app-reader-tableflow-api-key.secret}' \
+        OAUTH_ALLOWED_SCOPES=('catalog') \
+        ) \
+        ENABLED=true;\" "
+    EOT
+  }
+  depends_on = [
+    docker_container.tools_container
+  ]
+}
+
+
+resource "null_resource" "create_snowflake_iceberg_table" {
+  provisioner "local-exec" {
+    command = <<EOT
+        sleep 120
+        docker exec tools bash -c "export SNOWSQL_PWD='${var.snowflake_password}' && export SNOWSQL_DATABASE='\"${snowflake_database.primary.name}\"' && export SNOWSQL_WAREHOUSE='\"${snowflake_warehouse.warehouse.name}\"' &&  snowsql -a ${var.snowflake_account_name} -r ${var.snowflake_role} -u ${var.snowflake_username} -s public -q \"CREATE OR REPLACE ICEBERG TABLE low_stock_alerts EXTERNAL_VOLUME = '\\\"${snowflake_external_volume.external_volume.name}\\\"' CATALOG = '\\\"${var.project_name}-rest-catalog-integration\\\"' CATALOG_TABLE_NAME = 'low_stock_alerts';\" "
+    EOT
+  }
+  depends_on = [
+    docker_container.tools_container,
+    snowflake_database.primary ,
+    snowflake_external_volume.external_volume,
+    null_resource.create_snowflake_external_catalog
+
+  ]
+}
+
+
+#       docker exec tools bash -c "echo \"CREATE OR REPLACE CATALOG INTEGRATION \"sahil-tableflow-rest-catalog-integration\" \
+#     CATALOG_SOURCE=ICEBERG_REST \
+#     TABLE_FORMAT=ICEBERG \
+#     CATALOG_NAMESPACE='lkc-wmynp5' \
+#     REST_CONFIG = ( \
+#         CATALOG_URI = 'https://tableflow.us-west-2.aws.confluent.cloud/iceberg/catalog/organizations/5f242057-6c74-4ba5-9942-60d363203b93/environments/env-zj0gp7' \
+#         CATALOG_API_TYPE = PUBLIC \
+#     ) \
+#     REST_AUTHENTICATION=( \
+#         TYPE=OAUTH \
+#         OAUTH_CLIENT_ID='5TTA236EBGB3DAJ3' \
+#         OAUTH_CLIENT_SECRET='uUbfjYHvfg9s5t8rRNpGUTN2CbTVcbudhy6Rxu1C7VMtQM0XV78Dbxy70/H7iLZu' \
+#         OAUTH_ALLOWED_SCOPES=('catalog') \
+#     ) \
+# ENABLED=true;\" > catalog.sql"
+
+  #    docker exec tools bash -c "export SNOWSQL_PWD='${var.snowflake_password}' &&  snowsql -a ${var.snowflake_account_name} -r ${var.snowflake_role} -u ${var.snowflake_username} -f catalog.sql
+
+
+
+# q \"CREATE OR REPLACE CATALOG INTEGRATION \"${var.project_name}-rest-catalog-integration\" \
+#     CATALOG_SOURCE=ICEBERG_REST \
+#     TABLE_FORMAT=ICEBERG \
+#     CATALOG_NAMESPACE='${confluent_kafka_cluster.basic.id}' \
+#     REST_CONFIG = ( \
+#         CATALOG_URI = 'https://tableflow.${var.aws_region}.aws.confluent.cloud/iceberg/catalog/organizations/${data.confluent_organization.main.id}/environments/${confluent_environment.confluent_project_env.id}' \
+#         CATALOG_API_TYPE = PUBLIC \
+#     ) \
+#     REST_AUTHENTICATION=( \
+#         TYPE=OAUTH \
+#         OAUTH_CLIENT_ID='${confluent_api_key.app-reader-tableflow-api-key.id}' \
+#         OAUTH_CLIENT_SECRET='${confluent_api_key.app-reader-tableflow-api-key.secret}' \
+#         OAUTH_ALLOWED_SCOPES=('catalog') \
+#     ) \
+#     REFRESH_INTERVAL_SECONDS = 60 \
+# ENABLED=true;\""
+
+      # snowsql \
+      #   --account ${var.snowflake_account_name} \
+      #   --user ${var.snowflake_username} \
+      #   --password ${var.snowflake_password} \
+      #   --role ${var.snowflake_role} \
+      #   -x -q "CREATE OR REPLACE EXTERNAL VOLUME \"sahil_new_external_volume\" STORAGE_LOCATIONS = (( NAME = '${var.project_name}-s3-${var.aws_region}' STORAGE_PROVIDER = 'S3' STORAGE_BASE_URL = 's3://${aws_s3_bucket.tableflow_byob_bucket.bucket}/' STORAGE_AWS_ROLE_ARN = '${aws_iam_role.snowflake_s3_access_role.arn}' STORAGE_AWS_EXTERNAL_ID = 'new_client' )) ALLOW_WRITES = TRUE;"
+
 
 # resource "null_resource" "update_snowflake_iam_role_trust_policy" {
   
@@ -961,3 +1116,8 @@ resource "aws_iam_role_policy_attachment" "snowflake_role_policy_attachment" {
 
 #   depends_on = [snowflake_external_volume.tableflow_s3]
 # }
+
+# snowsql  --account ${var.snowflake_account_name} \
+#         --user ${var.snowflake_username} \
+#         --password ${var.snowflake_password} \
+#         --role ${var.snowflake_role}
