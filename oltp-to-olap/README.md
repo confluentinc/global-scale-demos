@@ -50,7 +50,11 @@ export TF_VAR_snowflake_account_name="<Snowflake Account Name>"
 export TF_VAR_snowflake_username="<Snowflake Username>"
 export TF_VAR_snowflake_password="<Snowflake Password>"
 export TF_VAR_snowflake_role="ACCOUNTADMIN"
+
+export TF_VAR_hardware="Aarch64"
 ```
+> [!NOTE]
+> This project is built upon MAC / Aarch64 based configurations, if required you can set x86_64 as well.
 
 ## <a name="step-4"></a>Deployment
 - Verify the resources

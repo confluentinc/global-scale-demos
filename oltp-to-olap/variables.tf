@@ -59,3 +59,7 @@ variable "snowflake_role" {
   description = "Snowflake User Role"
   type        = string
 }
+
+variable "hardware" {
+description = "Base Hardware Archietecture"
+}

@@ -980,6 +980,9 @@ resource "docker_image" "tools_image" {
   build {
     context = "./tools"
     dockerfile = "Dockerfile"
+    build_args = {
+      HARDWARE = var.hardware
+    }
   }
   depends_on = [ snowflake_external_volume.external_volume ]
 }
