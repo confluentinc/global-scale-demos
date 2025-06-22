@@ -6,11 +6,28 @@ output "tableflow_reader_api_key_secret" {
   value = confluent_api_key.app-reader-tableflow-api-key.secret
 }
 
+output "tableflow_admin_api_key_id" {
+  value = confluent_api_key.app-manager-tableflow-api-key.id
+}
+
+output "tableflow_admin_api_key_secret" {
+  value = confluent_api_key.app-manager-tableflow-api-key.secret
+}
+
+output "app_manager_user_id" {
+  value = confluent_service_account.app-manager.id
+}
+
+
 output "env_id" {
     value = confluent_environment.confluent_project_env.id
 }
 output "env_name" {
     value = confluent_environment.confluent_project_env.display_name
+}
+
+output "env_resource_name" {
+    value = confluent_environment.confluent_project_env.resource_name
 }
 
 output "kafka_id" {

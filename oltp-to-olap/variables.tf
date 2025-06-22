@@ -73,3 +73,8 @@ variable "enable_olap_snowflake" {
   description = "Create olap_snowflake specific resources"
   default = true
 }
+
+variable "enable_olap_glue" {
+  description = "Create olap_glue specific resources"
+  default = false
+}

@@ -188,6 +188,7 @@ resource "confluent_role_binding" "app-manager-provider-integration-resource-own
 
 }
 
+
 resource "confluent_api_key" "app-manager-kafka-api-key" {
   display_name = "${var.project_name}-app-manager-kafka-api-key"
   description  = "Kafka API Key that is owned by 'app-manager' service account"
@@ -707,6 +708,7 @@ module "s3_access_role" {
   provider_integration_role_arn    = confluent_provider_integration.main.aws[0].iam_role_arn
   provider_integration_external_id = confluent_provider_integration.main.aws[0].external_id
   customer_role_name               = local.customer_s3_access_role_name
+  customer_policy_name             = "${var.project_name}-tableflow-s3-access-policy"
   project_name=var.project_name
   depends_on = [ confluent_environment.confluent_project_env ]
 }

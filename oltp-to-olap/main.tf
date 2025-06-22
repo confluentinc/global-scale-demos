@@ -86,3 +86,24 @@ module "olap_snowflake" {
     snowflake=snowflake
   }
 }
+
+module "olap_glue" {
+  count = var.enable_olap_glue ? 1:0
+  source                            = "./olap_glue"
+  aws_region                        = var.aws_region  
+  project_name                      = var.project_name 
+  confluent_cloud_api_key           = var.confluent_cloud_api_key
+  confluent_cloud_api_secret        = var.confluent_cloud_api_secret
+  app_manager_user_id               = module.oltp[0].app_manager_user_id
+  env_id                            = module.oltp[0].env_id
+  env_resource_name                          = module.oltp[0].env_resource_name
+  kafka_id                          = module.oltp[0].kafka_id
+  tableflow_s3_bucket               = module.oltp[0].tableflow_s3_bucket
+  tableflow_s3_bucket_arn           = module.oltp[0].tableflow_s3_bucket_arn
+  tableflow_admin_api_key_id     = module.oltp[0].tableflow_admin_api_key_id
+  tableflow_admin_api_key_secret  = module.oltp[0].tableflow_admin_api_key_secret
+  providers = {
+    aws       = aws
+    confluent = confluent
+  }
+}

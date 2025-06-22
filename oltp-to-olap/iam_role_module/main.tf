@@ -31,7 +31,7 @@ resource "aws_iam_role" "s3_access_role" {
 
 # https://docs.confluent.io/cloud/current/connectors/cc-s3-sink/cc-s3-sink.html#user-account-iam-policy
 resource "aws_iam_policy" "s3_access_policy" {
-  name        = "${var.project_name}-tableflow-s3-access-policy"
+  name        = var.customer_policy_name
   description = "IAM policy for accessing the S3 bucket for Confluent Tableflow"
 
   policy = jsonencode({

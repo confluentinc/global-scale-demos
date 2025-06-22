@@ -18,6 +18,12 @@ variable "customer_role_name" {
   type        = string
 }
 
+variable "customer_policy_name" {
+  description = "The name of the IAM Policy for accessing S3"
+  type        = string
+}
+
+
 variable "project_name" {
   description = "The name of the IAM role for accessing S3 with a trust policy for Confluent"
   type        = string

@@ -49,3 +49,29 @@ EOT
 output "demo_resources_olap_snowflake" {
   value = local.demo_resources_olap_snowflake
 }
+
+
+
+locals {
+  demo_resources_olap_glue = can(module.olap_glue[0]) ? format(
+<<-EOT
+Start Querying the data in Amazon Athena Trino SQL with below details:
+Amazon Athena Database  = %s
+Amazon Athena Query Result S3 Bucket   = %s
+Amazon Athena Table = low_stock_alerts
+
+Update Query result location to above s3 bucket.
+
+Run this query on trino SQL:
+select * from low_stock_alerts;
+EOT
+,
+    module.oltp[0].kafka_id,
+    module.oltp[0].tableflow_s3_bucket
+  ) : "OLAP Glue Resources are not deployed, If required set TF_VAR_enable_olap_glue=true"
+}
+
+output "demo_resources_olap_glue" {
+  value = local.demo_resources_olap_glue
+}
+
