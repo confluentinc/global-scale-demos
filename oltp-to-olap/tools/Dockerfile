@@ -1,6 +1,6 @@
 FROM ubuntu:latest
 
-RUN apt update && apt install curl unzip -y 
+RUN apt update && apt install curl unzip mysql-client -y 
 
 ARG HARDWARE=Aarch64
 

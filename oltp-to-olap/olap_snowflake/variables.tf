@@ -8,7 +8,6 @@ variable "confluent_cloud_api_secret" {
   type        = string
   sensitive   = true
 }
-
 variable "aws_region" {
   description = "The AWS region where the S3 bucket is located."
   type        = string
@@ -16,22 +15,6 @@ variable "aws_region" {
 
 variable "project_name" {
   description = "Custom Project Name"
-  type        = string
-}
-
-variable "mysql_database_port" {
-  description = "MySql DB port"
-  type        = string
-}
-
-variable "mysql_database_username" {
-  description = "MySql DB username"
-  type        = string
-}
-
-
-variable "mysql_database_password" {
-  description = "MySql DB password"
   type        = string
 }
 
@@ -64,12 +47,31 @@ variable "hardware" {
 description = "Base Hardware Archietecture"
 }
 
-variable "enable_oltp" {
-  description = "Create oltp specific resources"
-  default = true
+variable "tableflow_reader_api_key_id" {
+  type = string
 }
 
-variable "enable_olap_snowflake" {
-  description = "Create olap_snowflake specific resources"
-  default = true
+variable "tableflow_reader_api_key_secret" {
+  type = string
 }
+
+variable "env_id" {
+    type = string
+}
+
+variable "kafka_id" {
+    type = string
+}
+
+variable "confluent_rest_catalog_uri" {
+    type = string
+}
+
+
+variable "tableflow_s3_bucket" {
+    type = string
+} 
+
+variable "tableflow_s3_bucket_arn" {
+    type = string
+} 

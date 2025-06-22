@@ -1,47 +1,51 @@
-output "demo_resources" {
-  value = <<-EOT
-
-       MySql Host =  ${aws_db_instance.mysql_db.address}
-       MySql Port =  ${aws_db_instance.mysql_db.port}
-       MySql User =  ${aws_db_instance.mysql_db.username}
-       
-       S3 Bucket Name = ${aws_s3_bucket.tableflow_byob_bucket.bucket}
-       S3 Bucket ARN  = ${aws_s3_bucket.tableflow_byob_bucket.arn}
-       
-
-       Confluent Environment   =  ${confluent_environment.confluent_project_env.display_name} : ${confluent_environment.confluent_project_env.id}
-       Confluent Kafka Cluster =  ${confluent_kafka_cluster.basic.display_name} : ${confluent_kafka_cluster.basic.id}
-       
-       Tableflow REST Catalog Endpoint =  "https://tableflow.${var.aws_region}.aws.confluent.cloud/iceberg/catalog/organizations/${data.confluent_organization.main.id}/environments/${confluent_environment.confluent_project_env.id}"
-
-       Snowflake External Volume  = ${snowflake_external_volume.external_volume.name} 
-       Snowflake Catalog Integration   = "${var.project_name}-rest-catalog-integration" 
-
-       Snowflake Warehouse = ${snowflake_warehouse.warehouse.name}
-       Snowflake Database  = ${snowflake_database.primary.name}
-       Snowflake Schema  = public
-       Snowflake Table  = low_stock_alerts
-       
-       Run this query on snowflake UI, once data is sinked to s3 bucket via tableflow:
-       
-       CREATE OR REPLACE ICEBERG TABLE low_stock_alerts 
-       EXTERNAL_VOLUME = '\"${snowflake_external_volume.external_volume.name}\"' 
-       CATALOG = '\"${var.project_name}-rest-catalog-integration\"' 
-       CATALOG_TABLE_NAME = 'low_stock_alerts';
-       
-  EOT
+locals {
+  demo_resources_oltp = can(module.oltp[0]) ? format(
+    "MySql Host = %s\nMySql Port = %s\nMySql User = %s\n\nS3 Bucket Name = %s\nS3 Bucket ARN  = %s\n\nConfluent Environment   = %s : %s\nConfluent Kafka Cluster = %s : %s\n\nTableflow REST Catalog Endpoint = \"%s\"",
+    module.oltp[0].mysql_db_address,
+    var.mysql_database_port,
+    var.mysql_database_username,
+    module.oltp[0].tableflow_s3_bucket,
+    module.oltp[0].tableflow_s3_bucket_arn,
+    module.oltp[0].env_name,
+    module.oltp[0].env_id,
+    module.oltp[0].kafka_name,
+    module.oltp[0].kafka_id,
+    module.oltp[0].confluent_rest_catalog_uri
+  ) : "OLTP Resources are not deployed, If required set TF_VAR_enable_oltp=true"
 }
 
-      #  Snowflake S3 Access Role Name = ${aws_iam_role.snowflake_s3_access_role.name}
-      #  Snowflake S3 Access Role ARN  = ${aws_iam_role.snowflake_s3_access_role.arn}
+output "demo_resources_oltp" {
+  value = local.demo_resources_oltp
+}
 
+locals {
+  demo_resources_olap_snowflake = can(module.olap_snowflake[0]) ? format(
+<<-EOT
+Snowflake External Volume  = %s
+Snowflake Catalog Integration   = "%s-rest-catalog-integration"
 
+Snowflake Warehouse = %s
+Snowflake Database  = %s
+Snowflake Schema    = public
+Snowflake Table     = low_stock_alerts
 
+Run this query on Snowflake UI once data is synced to S3 bucket via Tableflow:
 
-# output "external_volume_external_id" {
-#   value = jsondecode(snowflake_external_volume.tableflow_s3.describe_output[1].value).STORAGE_AWS_EXTERNAL_ID
-# }
+CREATE OR REPLACE ICEBERG TABLE low_stock_alerts 
+EXTERNAL_VOLUME = '"%s"'
+CATALOG = '"%s-rest-catalog-integration"'
+CATALOG_TABLE_NAME = 'low_stock_alerts';
+EOT
+,
+    module.olap_snowflake[0].snowflake_external_volume_name,
+    var.project_name,
+    module.olap_snowflake[0].snowflake_warehouse_name,
+    module.olap_snowflake[0].snowflake_database_name,
+    module.olap_snowflake[0].snowflake_external_volume_name,
+    var.project_name
+  ) : "OLAP Snowflake Resources are not deployed, If required set TF_VAR_enable_olap_snowflake=true"
+}
 
-# output "external_volume_user_arn" {
-#   value = jsondecode(snowflake_external_volume.tableflow_s3.describe_output[1].value).STORAGE_AWS_IAM_USER_ARN
-# }
+output "demo_resources_olap_snowflake" {
+  value = local.demo_resources_olap_snowflake
+}

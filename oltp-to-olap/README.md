@@ -37,6 +37,8 @@ Credentials & Access:
 
 # Update these variables
 export TF_VAR_project_name="changeme-demo"
+export TF_VAR_enable_oltp=true
+export TF_VAR_enable_olap_snowflake=true
 
 export TF_VAR_confluent_cloud_api_key="<Confluent Cloud Resource Management API Key Name>"
 export TF_VAR_confluent_cloud_api_secret="<Confluent Cloud Resource Management API Key Secret>"
@@ -73,6 +75,7 @@ terraform apply
 
 ```bash
 terraform destroy 
-terraform state rm confluent_provider_integration.main 
+terraform state rm "module.oltp[0].confluent_provider_integration.main"
+terraform state rm module.oltp[0].confluent_provider_integration.main
 terraform destroy
 ```
