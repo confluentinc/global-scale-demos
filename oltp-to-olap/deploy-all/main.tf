@@ -59,7 +59,7 @@ provider "databricks" {
 
 module "oltp" {
   count = var.enable_oltp ? 1:0
-  source                          = "./oltp"
+  source                          = "../common/oltp"
   aws_region                      = var.aws_region  
   hardware                        = var.hardware
   project_name                    = var.project_name 
@@ -77,7 +77,7 @@ module "oltp" {
 
 module "olap_snowflake" {
   count = var.enable_olap_snowflake ? 1:0
-  source                          = "./olap_snowflake"
+  source                          = "../common/olap_snowflake"
   aws_region                      = var.aws_region  
   project_name                    = var.project_name 
   confluent_cloud_api_key         = var.confluent_cloud_api_key
@@ -106,7 +106,7 @@ module "olap_snowflake" {
 
 module "olap_glue" {
   count = var.enable_olap_glue ? 1:0
-  source                            = "./olap_glue"
+  source                            = "../common/olap_glue"
   aws_region                        = var.aws_region  
   project_name                      = var.project_name 
   confluent_cloud_api_key           = var.confluent_cloud_api_key
@@ -129,7 +129,7 @@ module "olap_glue" {
 
 module "olap_databricks" {
   count = var.enable_olap_databricks ? 1:0
-  source                            = "./olap_databricks"
+  source                            = "../common/olap_databricks"
   aws_region                        = var.aws_region  
   project_name                      = var.project_name 
   tableflow_s3_bucket               = module.oltp[0].tableflow_s3_bucket

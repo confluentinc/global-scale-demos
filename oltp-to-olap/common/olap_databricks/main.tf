@@ -30,7 +30,6 @@ resource "databricks_storage_credential" "external" {
   }
 }
 
-
 resource "aws_iam_role" "databricks_s3_access_role" {
   name = local.databricks_s3_access_role_name
   description = "IAM role for accessing S3 with a trust policy for Databricks"
@@ -41,9 +40,7 @@ resource "aws_iam_role" "databricks_s3_access_role" {
       {
         Effect    = "Allow"
         Principal = {
-          AWS = [databricks_storage_credential.external.aws_iam_role[0].unity_catalog_iam_arn,databricks_storage_credential.external.aws_iam_role[0].role_arn]
-          
-                
+          AWS = databricks_storage_credential.external.aws_iam_role[0].unity_catalog_iam_arn
         }
         Action    = "sts:AssumeRole"
         Condition = {
@@ -52,6 +49,7 @@ resource "aws_iam_role" "databricks_s3_access_role" {
           }
         }
       }
+                  
     ]
   })
   depends_on = [
@@ -106,7 +104,7 @@ resource "databricks_grants" "external_cred_ui_access" {
   storage_credential = databricks_storage_credential.external.id
   grant {
     principal  = var.databricks_ui_user
-    privileges = ["CREATE_EXTERNAL_TABLE","READ_FILES"]
+    privileges = ["CREATE_EXTERNAL_TABLE","READ_FILES","MANAGE"]
   }
   depends_on = [ aws_iam_role_policy_attachment.databricks_role_policy_attachment ]
 }
@@ -115,16 +113,28 @@ resource "databricks_grants" "external_location_ui_access" {
   external_location = databricks_external_location.tableflow_s3.id
   grant {
     principal  = var.databricks_ui_user
-    privileges = ["CREATE_EXTERNAL_TABLE", "READ_FILES"]
+    privileges = ["CREATE_EXTERNAL_TABLE", "READ_FILES","MANAGE"]
   }
   depends_on = [ aws_iam_role_policy_attachment.databricks_role_policy_attachment ]
+}
+
+resource "null_resource" "wait" {
+  
+  provisioner "local-exec" {
+    command = <<EOT
+        sleep 30
+    EOT
+  }
+
+  depends_on = [aws_iam_role_policy_attachment.databricks_role_policy_attachment]
 }
 
 resource "databricks_external_location" "tableflow_s3" {
   name            = "${var.project_name}-tableflow-s3-location"
   url             = "s3://${var.tableflow_s3_bucket}"
   credential_name = databricks_storage_credential.external.id
-  depends_on = [ databricks_grants.external_cred_ui_access]
+  depends_on = [ databricks_grants.external_cred_ui_access , null_resource.wait ]
+  skip_validation = true
 }
 
 resource "databricks_catalog" "catalog" {
@@ -139,20 +149,21 @@ resource "databricks_schema" "schema" {
   properties = {
     kind = "various"
   }
+  force_destroy = true
 }
 
 resource "databricks_grant" "schema_ui_access" {
   schema = databricks_schema.schema.id
 
   principal  = var.databricks_ui_user
-  privileges = ["USE_SCHEMA", "MODIFY"]
+  privileges = ["USE_SCHEMA", "MODIFY","MANAGE"]
 }
 
 resource "databricks_grant" "catalog_ui_access" {
   catalog = databricks_catalog.catalog.name
 
   principal  = var.databricks_ui_user
-  privileges = ["USE_CATALOG", "USE_SCHEMA", "CREATE_SCHEMA", "CREATE_TABLE", "MODIFY"]
+  privileges = ["USE_CATALOG", "USE_SCHEMA", "CREATE_SCHEMA", "CREATE_TABLE", "MODIFY","MANAGE"]
 
   depends_on = [ databricks_catalog.catalog ]
 }

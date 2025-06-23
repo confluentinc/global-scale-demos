@@ -25,7 +25,7 @@ Credentials & Access:
   - Clone Source Code  
 ```bash
     git clone https://github.com/confluentinc/global-scale-demos.git
-    cd global-scale-demos/oltp-to-olap
+    cd global-scale-demos/oltp-to-olap/deploy-all
 ```
   - Initialize terraform and install required providers
 ```bash

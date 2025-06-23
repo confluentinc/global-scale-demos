@@ -22,17 +22,20 @@ variable "project_name" {
 variable "mysql_database_port" {
   description = "MySql DB port"
   type        = string
+  default = "3306"
 }
 
 variable "mysql_database_username" {
   description = "MySql DB username"
   type        = string
+  default = "mysqladmin"
 }
 
 
 variable "mysql_database_password" {
   description = "MySql DB password"
   type        = string
+  default = "passw0rd"
 }
 
 variable "snowflake_organization_name" {

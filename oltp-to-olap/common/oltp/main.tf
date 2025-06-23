@@ -70,7 +70,7 @@ resource "aws_security_group" "instance" {
 resource "docker_image" "tools_image" {
   name = "demotools:latest"
   build {
-    context    = "./tools"
+    context    = "../common/oltp/tools"
     dockerfile = "Dockerfile"
     build_args = {
       HARDWARE = var.hardware
@@ -100,7 +100,7 @@ resource "null_resource" "run_mysql_initial" {
   
   provisioner "local-exec" {
     command = <<EOT
-      docker cp mysql-initial.sql tools:/tmp/mysql-initial.sql
+      docker cp ../common/oltp/mysql-initial.sql tools:/tmp/mysql-initial.sql
       docker exec tools bash -c "mysql -h ${aws_db_instance.mysql_db.address} -P ${aws_db_instance.mysql_db.port} -u ${aws_db_instance.mysql_db.username} -p${var.mysql_database_password} < /tmp/mysql-initial.sql"
     EOT
   }
@@ -111,7 +111,7 @@ resource "null_resource" "run_mysql_initial" {
 resource "docker_image" "products_generator_image" {
   name = "generate:products"
   build {
-    context = "./products_generator"
+    context = "../common/oltp/products_generator"
     dockerfile = "Dockerfile"
   }
   depends_on = [ aws_db_parameter_group.mysql_debezium_parameter_group ] 
