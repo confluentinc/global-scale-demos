@@ -37,14 +37,14 @@ Credentials & Access:
 
 # Update these variables
 export TF_VAR_project_name="changeme-demo"
-export TF_VAR_enable_oltp=true
-export TF_VAR_enable_olap_snowflake=true
 
 export TF_VAR_confluent_cloud_api_key="<Confluent Cloud Resource Management API Key Name>"
 export TF_VAR_confluent_cloud_api_secret="<Confluent Cloud Resource Management API Key Secret>"
 
+
 export AWS_ACCESS_KEY_ID="<AWS User API Key ID>"
 export AWS_SECRET_ACCESS_KEY="<AWS User API Key Secret>"
+export AWS_SESSION_TOKEN="<AWS User Session Token>"
 export TF_VAR_aws_region="us-west-2"
 
 export TF_VAR_snowflake_organization_name="<Snowflake Organization Name>"
@@ -52,6 +52,11 @@ export TF_VAR_snowflake_account_name="<Snowflake Account Name>"
 export TF_VAR_snowflake_username="<Snowflake Username>"
 export TF_VAR_snowflake_password="<Snowflake Password>"
 export TF_VAR_snowflake_role="ACCOUNTADMIN"
+
+export TF_VAR_databricks_host="<Databricks Host URL>"
+export TF_VAR_databricks_client_id="<Databricks Service Principal Client ID>"
+export TF_VAR_databricks_client_secret="<Databricks Service Principal Client Secret>"
+export TF_VAR_databricks_ui_user="<Username of Databricks main user for ui access>"
 
 export TF_VAR_hardware="Aarch64"
 ```
@@ -75,8 +80,7 @@ terraform apply
 
 ```bash
 terraform destroy 
-terraform state rm "module.oltp[0].confluent_provider_integration.main"
-terraform destroy
+// Destroy again if any failures.
 ```
 > [!WARNING]
 > Snowflake catalog should be deleted via snowflake ui console.
