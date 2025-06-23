@@ -26,10 +26,16 @@ Credentials & Access:
 ```bash
     git clone https://github.com/confluentinc/global-scale-demos.git
 ```
-  - Deployment options
+  - Deployment options - use any one of the method
     - Deploy All (default)
         ```bash
             cd global-scale-demos/oltp-to-olap/deploy-all
+        ```
+    - Deploy only Snowflake for OLAP
+        ```bash
+            cd global-scale-demos/oltp-to-olap/deploy-all
+            export TF_VAR_enable_olap_databricks=false
+            export TF_VAR_enable_olap_glue=false
         ```
     - Deploy only Databricks for OLAP
         ```bash
