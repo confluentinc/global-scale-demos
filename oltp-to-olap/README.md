@@ -78,3 +78,5 @@ terraform destroy
 terraform state rm "module.oltp[0].confluent_provider_integration.main"
 terraform destroy
 ```
+> [!WARNING]
+> Snowflake catalog should be deleted via snowflake ui console.

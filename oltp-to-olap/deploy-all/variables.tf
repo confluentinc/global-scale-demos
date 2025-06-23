@@ -91,12 +91,6 @@ variable "databricks_client_secret" {
   default     = ""
 }
 
-variable "databricks_account_id" {
-  description = "Databricks Account ID"
-  type        = string
-  default     = ""
-}
-
 variable "databricks_ui_user" {
   description = "Databricks UI User"
   type        = string
@@ -119,10 +113,10 @@ variable "enable_olap_snowflake" {
 
 variable "enable_olap_glue" {
   description = "Create olap_glue specific resources"
-  default = false
+  default = true
 }
 
 variable "enable_olap_databricks" {
   description = "Create olap_databricks specific resources"
-  default = false
+  default = true
 }
