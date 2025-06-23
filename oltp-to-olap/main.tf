@@ -8,10 +8,17 @@ terraform {
       source  = "confluentinc/confluent"
       version = "2.31.0"
     }
+    
     snowflake = {
       source = "snowflakedb/snowflake"
       version = "2.1.0"
     }
+    
+    databricks = {
+      source  = "databricks/databricks"
+      version = ">=1.83.0"
+    }
+
     docker = {
       source  = "kreuzwerker/docker"
       version = "~> 3.0"
@@ -40,6 +47,15 @@ provider "snowflake" {
   role              = var.snowflake_role
   preview_features_enabled = ["snowflake_external_volume_resource"]
 }
+
+provider "databricks" {
+  host               = var.databricks_host
+  client_id          = var.databricks_client_id
+  client_secret      = var.databricks_client_secret
+  account_id         = var.databricks_account_id
+}
+
+
 
 module "oltp" {
   count = var.enable_oltp ? 1:0
@@ -83,8 +99,9 @@ module "olap_snowflake" {
   providers = {
     aws       = aws
     confluent = confluent
-    snowflake=snowflake
+    snowflake = snowflake
   }
+  depends_on = [ module.oltp ]
 }
 
 module "olap_glue" {
@@ -96,7 +113,7 @@ module "olap_glue" {
   confluent_cloud_api_secret        = var.confluent_cloud_api_secret
   app_manager_user_id               = module.oltp[0].app_manager_user_id
   env_id                            = module.oltp[0].env_id
-  env_resource_name                          = module.oltp[0].env_resource_name
+  env_resource_name                 = module.oltp[0].env_resource_name
   kafka_id                          = module.oltp[0].kafka_id
   tableflow_s3_bucket               = module.oltp[0].tableflow_s3_bucket
   tableflow_s3_bucket_arn           = module.oltp[0].tableflow_s3_bucket_arn
@@ -106,4 +123,22 @@ module "olap_glue" {
     aws       = aws
     confluent = confluent
   }
+
+  depends_on = [ module.oltp ]
+}
+
+module "olap_databricks" {
+  count = var.enable_olap_databricks ? 1:0
+  source                            = "./olap_databricks"
+  aws_region                        = var.aws_region  
+  project_name                      = var.project_name 
+  tableflow_s3_bucket               = module.oltp[0].tableflow_s3_bucket
+  databricks_ui_user                = var.databricks_ui_user
+  providers = {
+    aws        = aws
+    confluent  = confluent
+    databricks = databricks
+  }
+
+  depends_on = [ module.oltp ]
 }

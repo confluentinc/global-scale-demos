@@ -38,26 +38,66 @@ variable "mysql_database_password" {
 variable "snowflake_organization_name" {
   description = "Snowflake Organization Name"
   type        = string
+  default     = ""
 }
 
 variable "snowflake_account_name" {
   description = "Snowflake Account Name"
   type        = string
+  default     = ""
+
 }
 
 variable "snowflake_username" {
   description = "Snowflake User Name"
   type        = string
+  default     = ""
+
 }
 
 variable "snowflake_password" {
   description = "Snowflake Password"
   type        = string
+  default     = ""
+
 }
 
 variable "snowflake_role" {
   description = "Snowflake User Role"
   type        = string
+  default     = ""
+}
+
+variable "databricks_host" {
+  description = "Databricks Host URL"
+  type        = string
+  default     = ""
+
+}
+
+variable "databricks_client_id" {
+  description = "Databricks Service Principal Client ID"
+  type        = string
+  default     = ""
+
+}
+
+variable "databricks_client_secret" {
+  description = "Databricks Service Principal Client Secret"
+  type        = string
+  default     = ""
+}
+
+variable "databricks_account_id" {
+  description = "Databricks Account ID"
+  type        = string
+  default     = ""
+}
+
+variable "databricks_ui_user" {
+  description = "Databricks UI User"
+  type        = string
+  default     = ""
 }
 
 variable "hardware" {
@@ -76,5 +116,10 @@ variable "enable_olap_snowflake" {
 
 variable "enable_olap_glue" {
   description = "Create olap_glue specific resources"
+  default = false
+}
+
+variable "enable_olap_databricks" {
+  description = "Create olap_databricks specific resources"
   default = false
 }

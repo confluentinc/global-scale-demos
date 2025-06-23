@@ -76,6 +76,5 @@ terraform apply
 ```bash
 terraform destroy 
 terraform state rm "module.oltp[0].confluent_provider_integration.main"
-terraform state rm module.oltp[0].confluent_provider_integration.main
 terraform destroy
 ```
