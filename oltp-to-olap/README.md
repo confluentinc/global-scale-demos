@@ -1,6 +1,6 @@
 # Tableflow All In One
 
-![Tableflow](images/tableflow.png) 
+![Tableflow](common/images/tableflow.png) 
 
 ## **Agenda**
 1. [Setup Prerequisites](#step-1)
@@ -9,7 +9,7 @@
 4. [Deployment](#step-4)
 5. [Cleanup](#step-5)
 
-![Architecture](images/architecture.png) 
+![Architecture](common/images/architecture.png) 
 
 ## <a name="step-1"></a>Setup Prerequisites
 Required tools :
