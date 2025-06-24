@@ -12,7 +12,7 @@ locals {
    2. Confluent Kafka Cluster = %s : %s
    3. Mysql CDC Connector 
    4. Flink Queries
-   5. Tableflow is enabled for topic: low_stock_alerts. if paused/stopped resume it.
+   5. Tableflow is enabled for topic: low_stock_alerts. if paused/failed resume it.
       Tableflow REST Catalog Endpoint = "%s" 
 
 

@@ -7,7 +7,8 @@
 2. [Project Initalization](#step-2)
 3. [Set Credentials & Variables](#step-3)
 4. [Deployment](#step-4)
-5. [Cleanup](#step-5)
+5. [Add-On Setup](#step-5)
+6. [Cleanup](#step-6)
 
 ![Architecture](common/images/architecture.png) 
 
@@ -110,8 +111,40 @@ Credentials & Access:
 > [!NOTE]
 > This will take approx 10 minutes to deploy resources over AWS & Confluent
 
+## <a name="step-5"></a>Add-on Setup
+ 
+  Terraform will deploy almost everything, but still a few components should be managed via UI. 
+  You can refer terraform output as well for next steps.
 
-## <a name="step-5"></a>Cleanup
+  Click to Expand
+
+  <details>
+      <summary>Confluent</summary>
+      Terraform OLTP module will enable Tableflow for topic: low_stock_alerts with ICEBERG and DELTA format. If tableflow is not in sync or in failed state , you have to resume it. 
+  </details>
+
+  <details>
+      <summary>Snowflake</summary>
+      Tableflow will take some time to save snapshots in AWS s3 buckets, Approx 15 min.
+      Once data is sinked, create iceberg table in snowflake. Refer terraform output
+      Start queryinig the table.
+  </details>
+
+  <details>
+      <summary>Glue</summary>
+      Refer terraform output and start queryinig the table in AWS Athena.
+  </details>
+
+  <details>
+      <summary>Databricks</summary>
+      Databricks requires to update AWS IAM Role Trust Policy with the role's own ARN for Assume Role. 
+      Update Trust Policy is updated based upon the terraform output. 
+      Create the table in databricks SQL Workspace with table location in s3, Refer terraform output.
+      Start queryinig the table.
+  </details>
+
+
+## <a name="step-6"></a>Cleanup
   ```bash
   terraform destroy 
   # Destroy again if any failures.
