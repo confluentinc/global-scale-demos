@@ -140,7 +140,7 @@ resource "aws_iam_role_policy_attachment" "snowflake_role_policy_attachment" {
 resource "null_resource" "create_snowflake_external_catalog" {
   provisioner "local-exec" {
     command = <<EOT
-        docker exec tools bash -c "export SNOWSQL_PWD='${var.snowflake_password}' &&  snowsql -a ${var.snowflake_account_name} -r ${var.snowflake_role} -u ${var.snowflake_username} -w ${var.project_name}-warehouse -q \"CREATE OR REPLACE CATALOG INTEGRATION \\\"${var.project_name}-rest-catalog-integration\\\" \
+        docker exec ${var.project_name}-tools bash -c "export SNOWSQL_PWD='${var.snowflake_password}' &&  snowsql -a ${var.snowflake_account_name} -r ${var.snowflake_role} -u ${var.snowflake_username} -w ${var.project_name}-warehouse -q \"CREATE OR REPLACE CATALOG INTEGRATION \\\"${var.project_name}-rest-catalog-integration\\\" \
         CATALOG_SOURCE=ICEBERG_REST \
         TABLE_FORMAT=ICEBERG \
         CATALOG_NAMESPACE='${var.kafka_id}' \
@@ -164,7 +164,7 @@ resource "null_resource" "create_snowflake_iceberg_table" {
   provisioner "local-exec" {
     command = <<EOT
         sleep 120
-        docker exec tools bash -c "export SNOWSQL_PWD='${var.snowflake_password}' && export SNOWSQL_DATABASE='\"${snowflake_database.primary.name}\"' && export SNOWSQL_WAREHOUSE='\"${snowflake_warehouse.warehouse.name}\"' &&  snowsql -a ${var.snowflake_account_name} -r ${var.snowflake_role} -u ${var.snowflake_username} -s public -q \"CREATE OR REPLACE ICEBERG TABLE low_stock_alerts EXTERNAL_VOLUME = '\\\"${snowflake_external_volume.external_volume.name}\\\"' CATALOG = '\\\"${var.project_name}-rest-catalog-integration\\\"' CATALOG_TABLE_NAME = 'low_stock_alerts';\" "
+        docker exec ${var.project_name}-tools bash -c "export SNOWSQL_PWD='${var.snowflake_password}' && export SNOWSQL_DATABASE='\"${snowflake_database.primary.name}\"' && export SNOWSQL_WAREHOUSE='\"${snowflake_warehouse.warehouse.name}\"' &&  snowsql -a ${var.snowflake_account_name} -r ${var.snowflake_role} -u ${var.snowflake_username} -s public -q \"CREATE OR REPLACE ICEBERG TABLE low_stock_alerts EXTERNAL_VOLUME = '\\\"${snowflake_external_volume.external_volume.name}\\\"' CATALOG = '\\\"${var.project_name}-rest-catalog-integration\\\"' CATALOG_TABLE_NAME = 'low_stock_alerts';\" "
     EOT
   }
   depends_on = [

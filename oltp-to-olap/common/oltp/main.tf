@@ -68,7 +68,7 @@ resource "aws_security_group" "instance" {
 }
 
 resource "docker_image" "tools_image" {
-  name = "demotools:latest"
+  name = "demotools:${var.project_name}"
   build {
     context    = "../common/oltp/tools"
     dockerfile = "Dockerfile"
@@ -80,7 +80,7 @@ resource "docker_image" "tools_image" {
 }
 
 resource "docker_container" "tools_container" {
-  name     = "tools"
+  name     = "${var.project_name}-tools"
   image    = docker_image.tools_image.name
   start    = true
   must_run = true
@@ -100,8 +100,8 @@ resource "null_resource" "run_mysql_initial" {
   
   provisioner "local-exec" {
     command = <<EOT
-      docker cp ../common/oltp/mysql-initial.sql tools:/tmp/mysql-initial.sql
-      docker exec tools bash -c "mysql -h ${aws_db_instance.mysql_db.address} -P ${aws_db_instance.mysql_db.port} -u ${aws_db_instance.mysql_db.username} -p${var.mysql_database_password} < /tmp/mysql-initial.sql"
+      docker cp ../common/oltp/mysql-initial.sql ${var.project_name}-tools:/tmp/mysql-initial.sql
+      docker exec ${var.project_name}-tools bash -c "mysql -h ${aws_db_instance.mysql_db.address} -P ${aws_db_instance.mysql_db.port} -u ${aws_db_instance.mysql_db.username} -p${var.mysql_database_password} < /tmp/mysql-initial.sql"
     EOT
   }
 
@@ -109,7 +109,7 @@ resource "null_resource" "run_mysql_initial" {
 }
 
 resource "docker_image" "products_generator_image" {
-  name = "generate:products"
+  name = "generate:products-${var.project_name}"
   build {
     context = "../common/oltp/products_generator"
     dockerfile = "Dockerfile"
@@ -118,7 +118,7 @@ resource "docker_image" "products_generator_image" {
 }
 
 resource "docker_container" "products_generator_container" {
-  name  = "products-generator"
+  name  = "${var.project_name}-products-generator"
   image = docker_image.products_generator_image.name
   
   env = [
