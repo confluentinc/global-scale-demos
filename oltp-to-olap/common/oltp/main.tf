@@ -276,6 +276,24 @@ resource "confluent_kafka_acl" "app-connector-describe-on-cluster" {
   }
 }
 
+resource "confluent_kafka_acl" "app-connector-read-on-consumer-group" {
+  kafka_cluster {
+    id = confluent_kafka_cluster.basic.id
+  }
+  resource_type = "GROUP"
+  resource_name = "mysql-schemahistory"
+  pattern_type  = "LITERAL"
+  principal     = "User:${confluent_service_account.app-connector.id}"
+  host          = "*"
+  operation     = "READ"
+  permission    = "ALLOW"
+  rest_endpoint = confluent_kafka_cluster.basic.rest_endpoint
+  credentials {
+    key    = confluent_api_key.app-manager-kafka-api-key.id
+    secret = confluent_api_key.app-manager-kafka-api-key.secret
+  }
+}
+
 resource "confluent_kafka_acl" "app-connector-write-on-target-topic" {
   kafka_cluster {
     id = confluent_kafka_cluster.basic.id
@@ -311,19 +329,20 @@ resource "confluent_connector" "mysql" {
   }
 
   config_nonsensitive = {
-    "connector.class"          = "MySqlCdcSourceV2"
-    "name"                     = "${var.project_name}-mysql-source-connector"
-    "kafka.auth.mode"          = "SERVICE_ACCOUNT"
-    "kafka.service.account.id" = confluent_service_account.app-connector.id
-    "tasks.max"                = "1"
-    "database.hostname"        = aws_db_instance.mysql_db.address
-    "database.include.list"    = "source"
-    "database.port"            = aws_db_instance.mysql_db.port
-    "database.user"            = aws_db_instance.mysql_db.username
-    "output.data.format"       = "AVRO"
-    "output.key.format"        = "AVRO"
-    "topic.prefix"             = "mysql"
-    "snapshot.mode"            = "when_needed"
+    "connector.class"                     = "MySqlCdcSourceV2"
+    "name"                                = "${var.project_name}-mysql-source-connector"
+    "kafka.auth.mode"                     = "SERVICE_ACCOUNT"
+    "kafka.service.account.id"            = confluent_service_account.app-connector.id
+    "tasks.max"                           = "1"
+    "database.hostname"                   = aws_db_instance.mysql_db.address
+    "database.include.list"               = "source"
+    "database.port"                       = aws_db_instance.mysql_db.port
+    "database.user"                       = aws_db_instance.mysql_db.username
+    "output.data.format"                  = "AVRO"
+    "output.key.format"                   = "AVRO"
+    "topic.prefix"                        = "mysql"
+    "snapshot.mode"                       = "when_needed"
+    "schema.history.internal.kafka.topic" = "mysql-connector-schema-history"
   }
 
   depends_on = [
