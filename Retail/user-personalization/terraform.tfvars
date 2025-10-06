@@ -4,13 +4,14 @@ aws_region          = "us-east-1"
 existing_vpc_id     = "vpc-1cf57167"  # Replace with your actual VPC ID
 existing_subnet_ids = ["subnet-02c53b48","subnet-83288c8c"]  # Replace with your actual subnet IDs
 db_username         = "postgres"
-db_password         = "YourSecurePassword123!"
 environment         = "dev"
 
 
 # Confluent cloud variables
 
 confluent_environment_id   = "env-rzk07k"                         # Your Confluent Cloud Environment ID
+confluent_cloud_api_key    = "EP2D4MTUKVQEDZE5"
+confluent_cloud_api_secret = "7FqUuLvg5SUuD1KoRbKTYvLq5RlGfsqXL0T6szJ9hBM2/wA+JQTqe9rqr3MJ1tA1"
 
 # --- Kafka Cluster Variables ---
 kafka_cluster_display_name = "user-personalization"          # Display name for your Kafka Cluster

@@ -107,6 +107,7 @@ export TF_VAR_project_name="test"  #add a unique identifier
 # AWS Credentials (used by Terraform and the DynamoDB Connector)
 export TF_VAR_access_key="XXXXXXXXXXX"
 export TF_VAR_secret_key="XXXXXXXXXXXXXX"
+export TF_VAR_db_password="XXXXXXXXXXXXXX"  #add a password for database
 
 # Confluent Cloud API Keys (for the Confluent Terraform Provider)
 export TF_VAR_confluent_cloud_api_key="XXXXXXXXXX"
