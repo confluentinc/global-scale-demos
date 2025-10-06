@@ -103,6 +103,7 @@ To deploy this project, you will need:
 Set the required environment variables for the AWS and Confluent Cloud providers. **Note:** These credentials should be managed securely, such as through a secret manager or encrypted variable files, not hardcoded.
 
 ```bash
+export TF_VAR_project_name="test"  #add a unique identifier
 # AWS Credentials (used by Terraform and the DynamoDB Connector)
 export TF_VAR_access_key="XXXXXXXXXXX"
 export TF_VAR_secret_key="XXXXXXXXXXXXXX"
