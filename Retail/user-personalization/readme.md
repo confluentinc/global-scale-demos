@@ -111,3 +111,23 @@ export TF_VAR_secret_key="XXXXXXXXXXXXXX"
 # Confluent Cloud API Keys (for the Confluent Terraform Provider)
 export TF_VAR_confluent_cloud_api_key="XXXXXXXXXX"
 export TF_VAR_confluent_cloud_api_secret="XXXXXXXXXXX"
+
+
+### Deployment
+
+To provision the infrastructure and deploy the entire data pipeline, run the following Terraform commands:
+
+```bash
+
+# Initialize Terraform:
+terraform init
+
+# Review the plan (optional but highly recommended):
+
+terraform plan
+
+#Apply the configuration to deploy the infrastructure:
+
+terraform apply
+
+
