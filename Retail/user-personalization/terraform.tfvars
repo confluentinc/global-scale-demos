@@ -10,8 +10,6 @@ environment         = "dev"
 # Confluent cloud variables
 
 confluent_environment_id   = "env-rzk07k"                         # Your Confluent Cloud Environment ID
-confluent_cloud_api_key    = "EP2D4MTUKVQEDZE5"
-confluent_cloud_api_secret = "7FqUuLvg5SUuD1KoRbKTYvLq5RlGfsqXL0T6szJ9hBM2/wA+JQTqe9rqr3MJ1tA1"
 
 # --- Kafka Cluster Variables ---
 kafka_cluster_display_name = "user-personalization"          # Display name for your Kafka Cluster
