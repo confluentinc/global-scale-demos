@@ -1,4 +1,4 @@
-#project_name = "test"
+
 #AWS variables 
 aws_region          = "us-east-1"
 existing_vpc_id     = "vpc-1cf57167"  # Replace with your actual VPC ID
