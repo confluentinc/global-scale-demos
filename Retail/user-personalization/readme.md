@@ -110,9 +110,9 @@ export TF_VAR_secret_key="XXXXXXXXXXXXXX"
 
 # Confluent Cloud API Keys (for the Confluent Terraform Provider)
 export TF_VAR_confluent_cloud_api_key="XXXXXXXXXX"
-export TF_VAR_confluent_cloud_api_secret="XXXXXXXXXXX"
+export TF_VAR_confluent_cloud_api_secret="XXXXXXXXXXX" 
 
-
+```
 ### Deployment
 
 To provision the infrastructure and deploy the entire data pipeline, run the following Terraform commands:
@@ -130,4 +130,4 @@ terraform plan
 
 terraform apply
 
-
+```
