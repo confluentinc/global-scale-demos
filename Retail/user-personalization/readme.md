@@ -20,7 +20,7 @@ The pipeline is designed to capture **Change Data Capture (CDC)** streams from b
 ---
 
 ## 🎯 Architecture Summary
-
+![Architecture Diagram](image.png)
 The data pipeline has three primary stages:
 
 1.  **Data Ingestion (CDC):**
