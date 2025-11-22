@@ -1,10 +1,10 @@
 resource "confluent_service_account" "connect_sa" {
-  display_name = "${var.name_prefix}-connect-sa"
+  display_name = "${var.project_name}-connect-sa"
   description  = "Service account for fully-managed connectors"
 }
 
 resource "confluent_api_key" "kafka_admin" {
-  display_name = "${var.name_prefix}-kafka-admin-key"
+  display_name = "${var.project_name}-kafka-admin-key"
 
   owner {
     id          = confluent_service_account.connect_sa.id
@@ -17,19 +17,19 @@ resource "confluent_api_key" "kafka_admin" {
     api_version = confluent_kafka_cluster.main.api_version
     kind        = confluent_kafka_cluster.main.kind
     environment {
-      id = data.confluent_environment.target.id
+      id = confluent_environment.confluent_project_env.id
     }
   }
   depends_on = [confluent_role_binding.connect_sa_cluster_admin]
 }
 
 resource "confluent_service_account" "flink_sa" {
-  display_name = "${var.name_prefix}-flink-sa"
+  display_name = "${var.project_name}-flink-sa"
   description  = "Service account for Flink statements"
 }
 
 resource "confluent_api_key" "flink_api" {
-  display_name = "${var.name_prefix}-flink-api-key"
+  display_name = "${var.project_name}-flink-api-key"
 
   owner {
     id          = confluent_service_account.flink_sa.id
@@ -38,11 +38,11 @@ resource "confluent_api_key" "flink_api" {
   }
 
   managed_resource {
-    id          = data.confluent_flink_region.region.id
-    api_version = data.confluent_flink_region.region.api_version
-    kind        = data.confluent_flink_region.region.kind
+    id          = data.confluent_flink_region.flink-region.id
+    api_version = data.confluent_flink_region.flink-region.api_version
+    kind        = data.confluent_flink_region.flink-region.kind
     environment {
-      id = data.confluent_environment.target.id
+      id = confluent_environment.confluent_project_env.id
     }
   }
 

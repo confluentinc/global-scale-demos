@@ -1,18 +1,10 @@
-confluent_cloud_api_key    = "<USER INPUT>"
-confluent_cloud_api_secret = "<USER INPUT>"
-environment_id             = "<USER INPUT>"
-environment_name           = "<USER INPUT>"
+cloud_provider     = "AWS"
+cloud_region       = "ap-south-1"
 
-name_prefix        = "mf"
-kafka_cluster_name = "smf-cluster"
-cloud_provider     = "<USER INPUT>"
-cloud_region       = "<USER INPUT>"
-
-postgres_host     = "<USER INPUT>"
 postgres_port     = 5432
-postgres_user     = "<USER INPUT>"
-postgres_password = "<USER INPUT>"
-postgres_db_name  = "<USER INPUT>"
+postgres_user     = "postgres"
+postgres_password = "postgres"
+postgres_db_name  = "postgres"
 postgres_sslmode  = "prefer"
 
 cdc_topic_prefix        = "mf"

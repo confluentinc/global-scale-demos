@@ -11,16 +11,19 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from faker import Faker
 from psycopg2 import sql
+from dotenv import load_dotenv
+import os
 
 # ---------------------------------------------------------
 # CONFIGURATION
 # ---------------------------------------------------------
+
 DB_CONFIG = {
-    "host": "<USER INPUT>",
+    "host": os.getenv("DB_HOST"),
     "port": 5432,
-    "dbname": "<USER INPUT>",
-    "user": "<USER INPUT>",
-    "password": "<USER INPUT>"
+    "dbname": os.getenv("DB_NAME"),
+    "user": os.getenv("DB_USER"),
+    "password": os.getenv("DB_PASSWORD")
 }
 
 TOTAL_EVENTS = 5000

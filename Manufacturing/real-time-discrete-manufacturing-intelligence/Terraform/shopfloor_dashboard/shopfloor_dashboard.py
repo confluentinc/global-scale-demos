@@ -12,16 +12,18 @@ import pandas as pd
 import psycopg2
 from datetime import datetime
 import numpy as np
+from dotenv import load_dotenv
+import os
 
 # -----------------------------
 # Configuration
 # -----------------------------
 DB_CONFIG = {
-    "host": "<USER INPUT>",
+    "host": os.getenv("DB_HOST"),
     "port": 5432,
-    "dbname": "<USER INPUT>",
-    "user": "<USER INPUT>",
-    "password": "<USER INPUT>"
+    "dbname": os.getenv("DB_NAME"),
+    "user": os.getenv("DB_USER"),
+    "password": os.getenv("DB_PASSWORD")
 }
 
 TEMP_WARNING_THRESHOLD = 110 # For the Red Alert KPI
@@ -314,4 +316,4 @@ def update_dashboard(n, lines, stages, wos):
 
 if __name__ == "__main__":
     print("[INFO] Starting Shopfloor Dashboard at http://127.0.0.1:8050")
-    app.run(debug=True)
+    app.run(host="0.0.0.0",debug=True)

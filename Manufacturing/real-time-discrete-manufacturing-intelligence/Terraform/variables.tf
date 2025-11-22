@@ -11,28 +11,11 @@ variable "confluent_cloud_api_secret" {
   sensitive   = true
 }
 
-# Target environment and naming
-variable "environment_id" {
-  description = "Existing Environment ID (e.g., env-xxxxx)"
-  type        = string
-}
-
-variable "environment_name" {
-  description = "Existing Environment name "
-  type        = string
-}
-
-variable "name_prefix" {
+variable "project_name" {
   description = "Prefix for resource names"
   type        = string
-  default     = "demo"
 }
 
-# Cluster settings
-variable "kafka_cluster_name" {
-  type        = string
-  default     = "basic_kafka_cluster"
-}
 variable "kafka_availability" {
   type        = string
   default     = "SINGLE_ZONE"
@@ -41,6 +24,7 @@ variable "cloud_provider" {
   type        = string
   default     = "AWS"
 }
+
 variable "cloud_region" {
   type        = string
   default     = "us-east-1"
@@ -50,8 +34,6 @@ variable "prevent_destroy" {
   default     = true
 }
 
-# Postgres database connection (used by CDC source and Sink)
-variable "postgres_host"       { type = string }
 variable "postgres_port" {
   type = number
   default = 5432

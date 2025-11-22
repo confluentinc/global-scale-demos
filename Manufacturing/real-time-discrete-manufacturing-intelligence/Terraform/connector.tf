@@ -1,5 +1,6 @@
+
 resource "confluent_connector" "postgres_cdc_v2" {
-  environment { id = data.confluent_environment.target.id }
+  environment { id = confluent_environment.confluent_project_env.id}
   kafka_cluster { id = confluent_kafka_cluster.main.id }
 
   config_sensitive = {
@@ -8,14 +9,14 @@ resource "confluent_connector" "postgres_cdc_v2" {
 
   config_nonsensitive = {
     "connector.class"          = "PostgresCdcSourceV2"
-    "name"                     = "${var.name_prefix}-PostgresCdcSourceV2"
+    "name"                     = "${var.project_name}-PostgresCdcSourceV2"
     "kafka.auth.mode"          = "SERVICE_ACCOUNT"
     "kafka.service.account.id" = confluent_service_account.connect_sa.id
     "tasks.max" = "1"
 
     # DB connectivity
-    "database.hostname" = var.postgres_host
-    "database.port"     = tostring(var.postgres_port)
+    "database.hostname" = aws_db_instance.postgres_db.address
+    "database.port"     = aws_db_instance.postgres_db.port
     "database.user"     = var.postgres_user
     "database.dbname"   = var.postgres_db_name
     "database.sslmode"  = var.postgres_sslmode   # e.g., "prefer", "require", "verify-ca", "verify-full"
@@ -28,6 +29,8 @@ resource "confluent_connector" "postgres_cdc_v2" {
     "slot.name"          = "debezium2"
     "publication.name"   = "dbz_publication2"
     "publication.autocreate.mode" = "all_tables"
+    "auto.create"        = "true"
+    "auto.evolve"        = "true"
 
     # Optional tuning examples
     "snapshot.mode" = "initial"
@@ -38,14 +41,13 @@ resource "confluent_connector" "postgres_cdc_v2" {
   depends_on = [
     confluent_kafka_acl.cdc_describe_cluster,
     confluent_kafka_acl.cdc_create_on_prefix_topics,
-    confluent_kafka_acl.cdc_write_on_prefix_topics,
-    null_resource.create_tables
+    aws_db_instance.postgres_db,
+    null_resource.run_postgres_initial
   ]
 }
 
-# PostgreSQL Sink (INSERT mode)
 resource "confluent_connector" "postgres_sink_insert" {
-  environment { id = data.confluent_environment.target.id }
+  environment { id =  confluent_environment.confluent_project_env.id }
   kafka_cluster { id = confluent_kafka_cluster.main.id }
 
   config_sensitive = {
@@ -54,15 +56,15 @@ resource "confluent_connector" "postgres_sink_insert" {
 
   config_nonsensitive = {
     "connector.class"          = "PostgresSink"
-    "name"                     = "${var.name_prefix}-PostgresSink-INSERT"
+    "name"                     = "${var.project_name}-PostgresSink-INSERT"
     "kafka.auth.mode"          = "SERVICE_ACCOUNT"
     "kafka.service.account.id" = confluent_service_account.connect_sa.id
     "tasks.max"                = "1"
     "poll.interval.ms"         = "30000"
 
     # DB connectivity
-    "connection.host" = var.postgres_host
-    "connection.port" = tostring(var.postgres_port)
+    "connection.host" = aws_db_instance.postgres_db.address
+    "connection.port" = aws_db_instance.postgres_db.port
     "connection.user" = var.postgres_user
     "db.name"         = var.postgres_db_name
     "ssl.mode"        = var.postgres_sslmode   # matches sink semantics
@@ -82,15 +84,15 @@ resource "confluent_connector" "postgres_sink_insert" {
   }
 
   depends_on = [
-    confluent_kafka_acl.sink_insert_read_topics,
     confluent_kafka_acl.sinks_read_consumer_groups,
-    confluent_flink_statement.stmt3
+    confluent_flink_statement.stmt3,
+    aws_db_instance.postgres_db
   ]
 }
 
 # PostgreSQL Sink (UPSERT mode)
 resource "confluent_connector" "postgres_sink_upsert" {
-  environment { id = data.confluent_environment.target.id }
+  environment { id =  confluent_environment.confluent_project_env.id}
   kafka_cluster { id = confluent_kafka_cluster.main.id }
 
   config_sensitive = {
@@ -99,13 +101,13 @@ resource "confluent_connector" "postgres_sink_upsert" {
 
   config_nonsensitive = {
     "connector.class"          = "PostgresSink"
-    "name"                     = "${var.name_prefix}-PostgresSink-UPSERT"
+    "name"                     = "${var.project_name}-PostgresSink-UPSERT"
     "kafka.auth.mode"          = "SERVICE_ACCOUNT"
     "kafka.service.account.id" = confluent_service_account.connect_sa.id
 
     # DB connectivity
-    "connection.host" = var.postgres_host
-    "connection.port" = tostring(var.postgres_port)
+    "connection.host" = aws_db_instance.postgres_db.address
+    "connection.port" = aws_db_instance.postgres_db.port
     "connection.user" = var.postgres_user
     "db.name"         = var.postgres_db_name
     "ssl.mode"        = var.postgres_sslmode
@@ -126,8 +128,8 @@ resource "confluent_connector" "postgres_sink_upsert" {
   }
 
   depends_on = [
-    confluent_kafka_acl.sink_upsert_read_topics,
     confluent_kafka_acl.sinks_read_consumer_groups,
-    confluent_flink_statement.stmt1
+    confluent_flink_statement.stmt1,
+    aws_db_instance.postgres_db
   ]
 }

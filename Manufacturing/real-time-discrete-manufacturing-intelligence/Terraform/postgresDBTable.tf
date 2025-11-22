@@ -1,62 +1,45 @@
-# Create SQL file for table creation
-resource "local_file" "create_tables_sql" {
-  filename = "${path.module}/create_tables.sql"
-  content  = <<-SQL
-    -- Work Orders Table (Metadata)
-    CREATE TABLE IF NOT EXISTS work_orders (
-        workorder_id VARCHAR(50) PRIMARY KEY,
-        product_category VARCHAR(50),
-        product_code VARCHAR(50),
-        planned_quantity INT,
-        start_date TIMESTAMP,
-        end_date TIMESTAMP
-    );
+resource "docker_image" "tools_image" {
+  name = "demotools:${var.project_name}"
 
-    -- Sensor Events Table (Streaming Data)
-    CREATE TABLE IF NOT EXISTS sensor_events (
-        event_id SERIAL PRIMARY KEY,
-        workorder_id VARCHAR(50) REFERENCES work_orders(workorder_id),
-        item_id VARCHAR(50),           -- Unique ID for every unit produced
-        batch_number VARCHAR(50),
-        line_number VARCHAR(50),       -- e.g., LINE-1, LINE-2
-        routing_stage VARCHAR(50),     -- e.g., Assembly, Painting
-        temperature FLOAT,
-        pressure FLOAT,
-        is_defective BOOLEAN,          -- TRUE/FALSE instead of status codes
-        defect_reason VARCHAR(100),    -- e.g., "Thermal Issue"
-        operator_id VARCHAR(20),
-        sensor_timestamp TIMESTAMP
-    );
-    -- Insert a dummy work order so we don't violate FK constraints
-        INSERT INTO work_orders (workorder_id, product_category, product_code, planned_quantity, start_date, end_date)
-        VALUES ('INIT-000', 'Initialization', 'INIT-CODE', 10, NOW(), NOW())
-        ON CONFLICT (workorder_id) DO NOTHING;
+  build {
+    context    = "tools"
+    dockerfile = "Dockerfile"
+  }
 
-        -- Insert 2 dummy events: 1 OK, 1 Defective
-        -- This ensures the connector sees ALL columns and registers the schema correctly
-        INSERT INTO sensor_events (workorder_id, item_id, batch_number, line_number, routing_stage, temperature, pressure, is_defective, defect_reason, operator_id, sensor_timestamp)
-        VALUES
-        ('INIT-000', 'INIT-ITEM-1', 'BATCH-000', 'LINE-1', 'Assembly', 80.0, 120.0, false, NULL, 'OP-INIT', NOW()),
-        ('INIT-000', 'INIT-ITEM-2', 'BATCH-000', 'LINE-1', 'Assembly', 115.0, 120.0, true, 'Thermal Issue', 'OP-INIT', NOW());
-SQL
+  depends_on = [
+    aws_db_parameter_group.postgres_debezium_parameter_group
+  ]
 }
+
+resource "docker_container" "tools_container" {
+  name     = "${var.project_name}-tools"
+  image    = docker_image.tools_image.name
+  start    = true
+  must_run = true
+  
+  depends_on = [
+    aws_db_instance.postgres_db,
+    docker_image.tools_image
+  ]
+
+    command = [
+   "sleep",
+   "infinity"
+  ]
+}
+
+
 # Execute the SQL file
-resource "null_resource" "create_tables" {
+resource "null_resource" "run_postgres_initial" {
   provisioner "local-exec" {
     command = <<-EOT
-      PGPASSWORD='${var.postgres_password}' psql \
-        -h ${var.postgres_host} \
-        -p 5432 \
-        -U ${var.postgres_user} \
-        -d ${var.postgres_db_name} \
-        -f ${local_file.create_tables_sql.filename}
+      docker cp postgres-initial.sql ${var.project_name}-tools:/tmp/postgres-initial.sql
+      docker exec ${var.project_name}-tools bash -c "PGPASSWORD='${var.postgres_password}' psql -h ${aws_db_instance.postgres_db.address} -p 5432 -U ${var.postgres_user} -d ${var.postgres_db_name} -f /tmp/postgres-initial.sql"
     EOT
   }
+  depends_on = [
+    aws_db_instance.postgres_db,
+    docker_container.tools_container
 
-  depends_on = [local_file.create_tables_sql]
-
-  # This trigger ensures the resource runs when the SQL content changes
-  triggers = {
-    sql_content = sha256(local_file.create_tables_sql.content)
-  }
+  ]
 }

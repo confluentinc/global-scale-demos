@@ -1,22 +1,11 @@
-resource "confluent_flink_compute_pool" "pool" {
-  display_name = var.flink_pool_name
-  cloud        = var.cloud_provider
-  region       = var.cloud_region
-  max_cfu      = var.flink_max_cfu
-
-  environment {
-    id = data.confluent_environment.target.id
-  }
-}
-
 resource "confluent_flink_statement" "stmt1" {
-  organization { id = data.confluent_organization.org.id }
-  environment  { id = data.confluent_environment.target.id }
+  organization { id = data.confluent_organization.main.id }
+  environment  { id = confluent_environment.confluent_project_env.id }
   compute_pool { id = confluent_flink_compute_pool.pool.id }
   principal    { id = confluent_service_account.flink_sa.id }
 
   statement     = <<EOT
-CREATE TABLE `${data.confluent_environment.target.display_name}`.`${confluent_kafka_cluster.main.display_name}`.`production_metrics_sink` (
+CREATE TABLE `${confluent_environment.confluent_project_env.display_name}`.`${confluent_kafka_cluster.main.display_name}`.`production_metrics_sink` (
     workorder_id STRING,
     product_category STRING,
     line_number STRING,
@@ -36,10 +25,10 @@ DISTRIBUTED INTO 1 BUCKETS
 WITH ('connector' = 'confluent');
 EOT
   properties    = {
-    "sql.current-catalog"  = data.confluent_environment.target.display_name
+    "sql.current-catalog"  = confluent_environment.confluent_project_env.display_name
     "sql.current-database" = confluent_kafka_cluster.main.display_name
   }
-  rest_endpoint = data.confluent_flink_region.region.rest_endpoint
+  rest_endpoint = data.confluent_flink_region.flink-region.rest_endpoint  
 
   credentials {
     key    = confluent_api_key.flink_api.id
@@ -51,25 +40,21 @@ EOT
     confluent_flink_compute_pool.pool,
     confluent_api_key.flink_api,
     confluent_role_binding.flink_sa_developer,
-    confluent_kafka_acl.flink_describe_cluster,
-    confluent_kafka_acl.flink_sink_topic_create,
-    confluent_kafka_acl.flink_sink_topic_write,
-    confluent_kafka_topic.sensor_events,
-    confluent_kafka_topic.work_orders,
     confluent_role_binding.flink_sa_flink_admin,
     confluent_role_binding.flink_assigner,
+    confluent_connector.postgres_cdc_v2
   ]
 }
 
 # Statement 2
 resource "confluent_flink_statement" "stmt2" {
-  organization { id = data.confluent_organization.org.id }
-  environment  { id = data.confluent_environment.target.id }
+  organization { id = data.confluent_organization.main.id }
+  environment  { id = confluent_environment.confluent_project_env.id }
   compute_pool { id = confluent_flink_compute_pool.pool.id }
   principal    { id = confluent_service_account.flink_sa.id }
 
   statement     = <<EOT
-INSERT INTO `${data.confluent_environment.target.display_name}`.`${confluent_kafka_cluster.main.display_name}`.`production_metrics_sink`
+INSERT INTO `${confluent_environment.confluent_project_env.display_name}`.`${confluent_kafka_cluster.main.display_name}`.`production_metrics_sink`
 SELECT
     s.workorder_id,
     w.product_category,
@@ -95,10 +80,10 @@ GROUP BY
     s.batch_number;
 EOT
   properties    = {
-    "sql.current-catalog"  = data.confluent_environment.target.display_name
+    "sql.current-catalog"  = confluent_environment.confluent_project_env.display_name
     "sql.current-database" = confluent_kafka_cluster.main.display_name
   }
-  rest_endpoint = data.confluent_flink_region.region.rest_endpoint
+  rest_endpoint = data.confluent_flink_region.flink-region.rest_endpoint
 
   credentials {
     key    = confluent_api_key.flink_api.id
@@ -116,13 +101,13 @@ EOT
 
 # Statement 3
 resource "confluent_flink_statement" "stmt3" {
-  organization { id = data.confluent_organization.org.id }
-  environment  { id = data.confluent_environment.target.id }
+  organization { id = data.confluent_organization.main.id }
+  environment  { id = confluent_environment.confluent_project_env.id }
   compute_pool { id = confluent_flink_compute_pool.pool.id }
   principal    { id = confluent_service_account.flink_sa.id }
 
   statement     = <<EOT
-CREATE TABLE `${data.confluent_environment.target.display_name}`.`${confluent_kafka_cluster.main.display_name}`.`production_metrics_history` (
+CREATE TABLE `${confluent_environment.confluent_project_env.display_name}`.`${confluent_kafka_cluster.main.display_name}`.`production_metrics_history` (
     workorder_id STRING,
     product_category STRING,
     line_number STRING,
@@ -142,10 +127,10 @@ DISTRIBUTED INTO 1 BUCKETS
 WITH ('connector' = 'confluent');
 EOT
   properties    = {
-    "sql.current-catalog"  = data.confluent_environment.target.display_name
+    "sql.current-catalog"  = confluent_environment.confluent_project_env.display_name
     "sql.current-database" = confluent_kafka_cluster.main.display_name
   }
-  rest_endpoint = data.confluent_flink_region.region.rest_endpoint
+  rest_endpoint = data.confluent_flink_region.flink-region.rest_endpoint
 
   credentials {
     key    = confluent_api_key.flink_api.id
@@ -163,13 +148,13 @@ EOT
 
 # Statement 4
 resource "confluent_flink_statement" "stmt4" {
-  organization { id = data.confluent_organization.org.id }
-  environment { id = data.confluent_environment.target.id }
+  organization { id = data.confluent_organization.main.id }
+  environment { id = confluent_environment.confluent_project_env.id }
   compute_pool { id = confluent_flink_compute_pool.pool.id }
   principal { id = confluent_service_account.flink_sa.id }
 
   statement     = <<EOT
-INSERT INTO `${data.confluent_environment.target.display_name}`.`${confluent_kafka_cluster.main.display_name}`.`production_metrics_history`
+INSERT INTO `${confluent_environment.confluent_project_env.display_name}`.`${confluent_kafka_cluster.main.display_name}`.`production_metrics_history`
 SELECT
     s.workorder_id,
     w.product_category,
@@ -209,10 +194,10 @@ JOIN `mf.public.work_orders` AS w
   ON s.workorder_id = w.workorder_id;
 EOT
   properties    = {
-    "sql.current-catalog"  = data.confluent_environment.target.display_name
+    "sql.current-catalog"  = confluent_environment.confluent_project_env.display_name
     "sql.current-database" = confluent_kafka_cluster.main.display_name
   }
-  rest_endpoint = data.confluent_flink_region.region.rest_endpoint
+  rest_endpoint = data.confluent_flink_region.flink-region.rest_endpoint
 
   credentials {
     key    = confluent_api_key.flink_api.id

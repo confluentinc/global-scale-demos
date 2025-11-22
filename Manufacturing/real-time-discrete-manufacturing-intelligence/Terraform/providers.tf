@@ -8,6 +8,14 @@ terraform {
       source  = "cyrilgdn/postgresql"
       version = "~> 1.22"
     }
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.17.0"
+    }
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "~> 3.0"
+    }
   }
 }
 
@@ -18,10 +26,14 @@ provider "confluent" {
 }
 
 provider "postgresql" {
-  host            = var.postgres_host
-  port            = var.postgres_port
+  host            = aws_db_instance.postgres_db.address
+  port            = aws_db_instance.postgres_db.port
   database        = var.postgres_db_name
   username        = var.postgres_user
   password        = var.postgres_password
   sslmode         = var.postgres_sslmode
+}
+
+provider "aws" {
+  region = var.cloud_region
 }
