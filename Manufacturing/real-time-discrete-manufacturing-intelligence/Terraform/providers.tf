@@ -37,3 +37,4 @@ provider "postgresql" {
 provider "aws" {
   region = var.cloud_region
 }
+

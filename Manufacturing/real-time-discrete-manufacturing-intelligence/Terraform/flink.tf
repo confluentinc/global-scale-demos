@@ -22,7 +22,10 @@ CREATE TABLE `${confluent_environment.confluent_project_env.display_name}`.`${co
     PRIMARY KEY (workorder_id, product_category, line_number, routing_stage, batch_number) NOT ENFORCED
 )
 DISTRIBUTED INTO 1 BUCKETS
-WITH ('connector' = 'confluent');
+WITH ('connector' = 'confluent',
+'kafka.consumer.isolation-level' = 'read-uncommitted',
+'scan.startup.mode' = 'latest-offset'
+);
 EOT
   properties    = {
     "sql.current-catalog"  = confluent_environment.confluent_project_env.display_name
@@ -92,6 +95,7 @@ EOT
 
   depends_on = [
     confluent_flink_statement.stmt1,
+    confluent_flink_statement.alter_sensor_events_wm,
     confluent_role_binding.flink_sa_developer,
     confluent_role_binding.flink_sa_flink_admin,
     confluent_role_binding.flink_assigner,
@@ -206,10 +210,46 @@ EOT
 
   depends_on = [
     confluent_flink_statement.stmt3,
+    confluent_flink_statement.alter_sensor_events_wm,
     confluent_role_binding.flink_sa_developer,
     confluent_role_binding.flink_sa_flink_admin,
     confluent_role_binding.flink_assigner,
     confluent_api_key.flink_api
   ]
 
+}
+
+# Statement 5: Alter Watermark
+resource "confluent_flink_statement" "alter_sensor_events_wm" {
+  organization { id = data.confluent_organization.main.id }
+  environment  { id = confluent_environment.confluent_project_env.id }
+  compute_pool { id = confluent_flink_compute_pool.pool.id }
+  principal    { id = confluent_service_account.flink_sa.id }
+
+  statement = <<EOT
+ALTER TABLE `mf.public.sensor_events`
+MODIFY WATERMARK FOR $rowtime AS $rowtime - INTERVAL '5' SECOND;
+EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.confluent_project_env.display_name
+    "sql.current-database" = confluent_kafka_cluster.main.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.flink-region.rest_endpoint
+
+  credentials {
+    key    = confluent_api_key.flink_api.id
+    secret = confluent_api_key.flink_api.secret
+  }
+
+  depends_on = [
+    confluent_kafka_cluster.main,
+    confluent_flink_compute_pool.pool,
+    confluent_api_key.flink_api,
+    confluent_role_binding.flink_sa_developer,
+    confluent_role_binding.flink_sa_flink_admin,
+    confluent_role_binding.flink_assigner,
+    confluent_connector.postgres_cdc_v2
+  ]
 }

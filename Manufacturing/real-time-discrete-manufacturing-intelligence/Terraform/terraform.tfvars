@@ -24,3 +24,4 @@ sink_upsert_pk_fields    = "workorder_id,product_category"
 flink_pool_name = "smf-flink-pool"
 flink_max_cfu   = 5
 
+project_name = "mf"
