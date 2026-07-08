@@ -2,7 +2,7 @@
 
 This repository provisions an end-to-end real-time financial intelligence, processing, and data lake syncing blueprint using **Terraform**. It configures an AWS RDS PostgreSQL instance optimized for Debezium Change Data Capture (CDC), establishes stream pipelines within **Confluent Cloud**, runs continuous stream computations via **Apache Flink**, executes Client-Side Field-Level Encryption (**CSFLE**), and continuously materializes live events into an Amazon S3 data lake as **Apache Iceberg** tables via **Tableflow** linked directly to an AWS Glue Data Catalog.
 
-![Architecture](assets/images/arc.png) 
+![Architecture](terraform/assets/images/arc.png) 
 
 ---
 
