@@ -1,0 +1,12 @@
+{
+  "connect.name": "psql.public.user_profiles.Key",
+  "fields": [
+    {
+      "name": "user_id",
+      "type": "string"
+    }
+  ],
+  "name": "Key",
+  "namespace": "psql.public.user_profiles",
+  "type": "record"
+}
