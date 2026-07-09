@@ -10,8 +10,9 @@ This demo showcases the application of Flink ML function and Tableflow to enable
 3. [Set Credentials & Variables](#step-3)
 4. [Deployment](#step-4)
 5. [Add-On Setup](#step-5)
-6. [Build Quicksight Analytics](#step-6)
-7. [Cleanup](#step-7)
+6. [Explore the Datalake Using Athena](#step-6)
+7. [Build Your Own Analytics](#step-7)
+8. [Cleanup](#step-8)
 
 ![Architecture](images/arch.png) 
 
@@ -58,10 +59,7 @@ Credentials & Access:
     export AWS_SECRET_ACCESS_KEY="<AWS User API Key Secret>"
     export AWS_SESSION_TOKEN="<AWS User Session Token>"
     export TF_VAR_aws_region="us-west-2"
-    export TF_VAR_qs_username="<AWS Quicksight User ID>"
   ```
-> [!TIP]
-> The Quicksight username can be found in Account Info. The format for internal user should be AWSReservedSSO_nonprod-administrator_xxxxx/abc@confluent.io
 
 ## <a name="step-4"></a>Deployment
 - Verify the resources
@@ -79,14 +77,24 @@ Credentials & Access:
  
   Terraform will deploy almost everything, but still a few components should be managed via UI. 
 
-- **Confluent**: Terraform will enable Tableflow for topic: subscriber_perf_enriched and packetloss_result_anomaly_flatten with ICEBERG format. If tableflow is not in sync or in failed state, you shall resume it. 
+- **Confluent**: Terraform will enable Tableflow for topic: subscriber_perf_enriched and packetloss_result_anomaly with ICEBERG format. If tableflow is not in sync or in failed state, you shall resume it. 
 
 - **AWS Quicksight**: Build your analytics to visualize the gold table and anomaly detection result
 
-## <a name="step-6"></a>Build Quicksight Analytics
+## <a name="step-6"></a>Explore the Datalake Using Athena
+
+- The Iceberg tables should be available in data catalog now. Let's query the tables using Athena.
+![Query using Athena](images/athena.png)
+
+## <a name="step-7"></a>Build Your Own Analytics
+
+- You can choose to build analytics/dashboard using your favourite BI tools. 
+
+- In this demo, AWS Quicksight is used as an example.
+
 - Go to your Quicksight interface with selected region.
 
-- Create analysis, select the dataset `demo.telco.packetloss_result_anomaly_flatten` that has been created in Terraform.
+- Create analysis, select the dataset `demo.telco.packetloss_result_anomaly` that has been created in Terraform.
 ![step-1](images/step-1.png)
 
 - Create a line chart for Anomaly Detection result:
@@ -100,8 +108,12 @@ Credentials & Access:
 > [!NOTE]
 > It will take 15 minutes for the initial snapshot to be loaded into the dataset.
 
-## <a name="step-7"></a>Cleanup
+## <a name="step-8"></a>Cleanup
   ```bash
-  terraform destroy 
   # Destroy again if any failures.
+  terraform destroy 
+  
+  # Use this command if the provider integration unable to destroy.
+  terraform state rm confluent_provider_integration.main
+  terraform destroy
   ```

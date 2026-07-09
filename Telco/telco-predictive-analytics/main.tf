@@ -787,13 +787,28 @@ resource "confluent_flink_statement" "packetloss_result_anomaly_statement" {
   window_time,
   tracking_area_id,
   avg_packet_loss,
-  ML_DETECT_ANOMALIES(avg_packet_loss, window_time, JSON_OBJECT('enableStl' VALUE false))
-    OVER (
-      PARTITION BY tracking_area_id
-      ORDER BY window_time
-      RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-    ) AS anomaly
-  FROM windowed_avg;
+  anomaly.`timestamp` AS anomaly_ts,
+  anomaly.actual_value AS actual_value,
+  anomaly.forecast_value AS forecast_value,
+  anomaly.lower_bound AS lower_bound,
+  anomaly.upper_bound AS upper_bound,
+  anomaly.is_anomaly AS is_anomaly,
+  anomaly.rmse AS rmse,
+  anomaly.aic AS aic
+  FROM (
+    SELECT
+    window_start,
+    window_end,
+    window_time,
+    tracking_area_id,
+    avg_packet_loss,
+    ML_DETECT_ANOMALIES(avg_packet_loss, window_time, JSON_OBJECT('enableStl' VALUE false))
+      OVER (
+        PARTITION BY tracking_area_id
+        ORDER BY window_time
+        RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+      ) AS anomaly
+    FROM windowed_avg);
   EOT
   properties = {
     "sql.current-catalog"  = confluent_environment.demo-env.display_name
@@ -813,56 +828,7 @@ resource "confluent_flink_statement" "packetloss_result_anomaly_statement" {
   ]
 }
 
-resource "confluent_flink_statement" "packetloss_result_anomaly_flatten_statement" {
-  organization {
-    id = data.confluent_organization.main.id
-    }
-  environment {
-    id = confluent_environment.demo-env.id
-  }
-  compute_pool {
-    id = confluent_flink_compute_pool.main.id
-  }
-  principal {
-    id = confluent_service_account.app-manager.id
-  }
-  statement  = <<-EOT
-  CREATE TABLE `demo.telco.packetloss_result_anomaly_flatten` AS SELECT
-  window_start             AS window_start_ts,
-  window_end               AS window_end_ts,
-  window_time              AS window_time,
-  tracking_area_id         AS tracking_area_id,
-  avg_packet_loss                      AS avg_packet_loss,
-  anomaly.`timestamp` AS anomaly_ts,
-  anomaly.actual_value                 AS actual_value,
-  anomaly.forecast_value               AS forecast_value,
-  anomaly.lower_bound                  AS lower_bound,
-  anomaly.upper_bound                  AS upper_bound,
-  anomaly.is_anomaly                  AS is_anomaly,
-  anomaly.rmse                         AS rmse,
-  anomaly.aic                          AS aic
-  FROM `demo.telco.packetloss_result_anomaly`;
-  EOT
-  properties = {
-    "sql.current-catalog"  = confluent_environment.demo-env.display_name
-    "sql.current-database" = confluent_kafka_cluster.basic.display_name
-  }
-  # Use data.confluent_flink_region.main.rest_endpoint for Basic, Standard, public Dedicated Kafka clusters
-  # and data.confluent_flink_region.main.private_rest_endpoint for Kafka clusters with private networking
-  rest_endpoint = data.confluent_flink_region.flink-region.rest_endpoint
-  credentials {
-    key    = confluent_api_key.flink-api-key.id
-    secret = confluent_api_key.flink-api-key.secret
-  }
-  depends_on = [
-    confluent_flink_compute_pool.main,
-    confluent_connector.postgre-sql-cdc-source,
-    confluent_flink_statement.packetloss_result_anomaly_statement,
-  ]
-}
-
 data "confluent_organization" "main" {}
-
 
 resource "confluent_api_key" "app-manager-tableflow-api-key" {
   display_name = "${var.project_name}-demo-app-manager-tableflow-api-key"
@@ -896,7 +862,7 @@ resource "confluent_tableflow_topic" "final-tableflow-topic" {
   kafka_cluster {
     id = confluent_kafka_cluster.basic.id
   }
-  display_name = "demo.telco.packetloss_result_anomaly_flatten"
+  display_name = "demo.telco.packetloss_result_anomaly"
   table_formats = ["ICEBERG"]
   // Use BYOB AWS storage
   byob_aws {
@@ -910,7 +876,7 @@ resource "confluent_tableflow_topic" "final-tableflow-topic" {
   }
   depends_on = [
     module.s3_access_role,
-    confluent_flink_statement.packetloss_result_anomaly_flatten_statement,
+    confluent_flink_statement.packetloss_result_anomaly_statement,
     confluent_provider_integration.main,
   ]
 }
@@ -1162,6 +1128,117 @@ resource "confluent_role_binding" "app-reader-environment-admin" {
   depends_on = [ confluent_environment.demo-env ]
 }
 
+resource "aws_athena_workgroup" "workgroup" {
+  name = "${var.project_name}-athena-workgroup"
+  force_destroy = true
+  configuration {
+    engine_version {
+      selected_engine_version = "Athena engine version 3"
+    }
+    execution_role = aws_iam_role.athena_glue_service_role.arn
+    result_configuration {
+      output_location = "s3://${aws_s3_bucket.tableflow_byob_bucket.bucket}/output/"
+    }
+  }
+  depends_on = [ aws_s3_bucket.tableflow_byob_bucket ]
+}
+
+resource "aws_iam_role" "athena_glue_service_role" {
+  name = "${var.project_name}-athena-glue-service-role"
+
+    assume_role_policy = jsonencode({
+    Version   = "2012-10-17"
+    Statement = [
+      {
+        Effect    = "Allow"
+        Principal = {
+          Service = "athena.amazonaws.com"
+        }
+        Action    = "sts:AssumeRole"
+        Condition = {
+          StringEquals = {
+            "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+          },
+          ArnLike = {
+                    "aws:SourceArn": "arn:aws:athena:${var.aws_region}:${data.aws_caller_identity.current.account_id}:workgroup/${var.project_name}-athena-workgroup"
+          }
+        }
+      },
+    ]
+  })
+}
+
+resource "aws_iam_policy" "athena_glue_role_policy" {
+  name        = "${var.project_name}-glue-spark-role-policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+                "s3:GetBucketLocation",
+                "s3:GetObject",
+                "s3:ListBucket",
+                "s3:ListBucketMultipartUploads",
+                "s3:ListMultipartUploadParts",
+                "s3:AbortMultipartUpload",
+                "s3:CreateBucket",
+                "s3:PutObject",
+                "s3:PutBucketPublicAccessBlock"
+        ]
+        Resource = ["arn:aws:s3:::${aws_s3_bucket.tableflow_byob_bucket.bucket}",
+        "arn:aws:s3:::${aws_s3_bucket.tableflow_byob_bucket.bucket}/*"]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+                "glue:GetDatabase",
+                "glue:GetDatabases",
+                "glue:GetTable",
+                "glue:GetTables",
+                "glue:GetPartition",
+                "glue:GetPartitions",
+                "glue:BatchGetPartition"
+        ],
+        Resource = ["arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}:catalog",
+          "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}:database/*",
+          "arn:aws:glue:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/*/*"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+                "athena:GetDatabase",
+                "athena:GetDataCatalog",
+                "athena:GetTableMetadata",
+                "athena:ListDatabases",
+                "athena:ListDataCatalogs",
+                "athena:ListTableMetadata",
+                "athena:ListWorkGroups",                
+                "athena:GetQueryExecution",
+                "athena:GetQueryResults",
+                "athena:GetWorkGroup",
+                "athena:StartQueryExecution",
+                "athena:StopQueryExecution"
+        ]
+        Resource = "arn:aws:athena:${var.aws_region}:${data.aws_caller_identity.current.account_id}:workgroup/${aws_athena_workgroup.workgroup.name}"
+      },
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "athena_glue_access_attach" {
+  role       = aws_iam_role.athena_glue_service_role.name
+  policy_arn = aws_iam_policy.athena_glue_role_policy.arn
+}
+
+/*
+resource "aws_iam_role_policy_attachment" "quicksight_s3_access_attach" {
+  role       = data.aws_iam_role.quicksight_service_role.name
+  policy_arn = aws_iam_policy.quicksight_s3_access.arn
+}
+
 resource "aws_quicksight_data_source" "athena" {
   aws_account_id = data.aws_caller_identity.current.account_id
   data_source_id = "${var.project_name}-tableflow-iceberg-tables"
@@ -1172,7 +1249,7 @@ resource "aws_quicksight_data_source" "athena" {
 
   parameters {
     athena {
-      work_group = "primary"
+      work_group = aws_athena_workgroup.workgroup.name
     }
   }
 
@@ -1189,14 +1266,15 @@ resource "aws_quicksight_data_source" "athena" {
   }
   depends_on = [
     confluent_tableflow_topic.final-tableflow-topic-2,
+    aws_athena_workgroup.workgroup,
   ]
 }
 
-resource "aws_quicksight_data_set" "demo_telco_packetloss_result_anomaly_flatten" {
+resource "aws_quicksight_data_set" "demo_telco_packetloss_result_anomaly" {
   aws_account_id = data.aws_caller_identity.current.account_id
 
-  data_set_id = "demo_telco_packetloss_result_anomaly_flatten"
-  name        = "demo.telco.packetloss_result_anomaly_flatten"
+  data_set_id = "demo_telco_packetloss_result_anomaly"
+  name        = "demo.telco.packetloss_result_anomaly"
 
   import_mode = "DIRECT_QUERY"
 
@@ -1208,7 +1286,7 @@ resource "aws_quicksight_data_set" "demo_telco_packetloss_result_anomaly_flatten
       data_source_arn = aws_quicksight_data_source.athena.arn
       catalog         = "AwsDataCatalog"
       schema          = confluent_kafka_cluster.basic.id
-      name            = "demo.telco.packetloss_result_anomaly_flatten"
+      name            = "demo.telco.packetloss_result_anomaly"
 
       # Define columns as they exist in the Glue table
       input_columns {
@@ -1296,7 +1374,7 @@ resource "aws_quicksight_data_set" "demo_telco_packetloss_result_anomaly_flatten
 
   logical_table_map {
     logical_table_map_id = "athena-main"
-    alias                = "demo.telco.packetloss_result_anomaly_flatten"
+    alias                = "demo.telco.packetloss_result_anomaly"
 
     source {
       physical_table_id = "athena-main"
@@ -1503,7 +1581,7 @@ resource "aws_quicksight_data_set" "demo_telco_subscriber_perf_enriched" {
     aws_quicksight_data_source.athena,
   ]
 }
-/*
+
 resource "aws_quicksight_analysis" "anomaly_detection" {
   analysis_id = "anomaly-line-chart"
   name        = "Anomaly Line Chart"
@@ -1604,40 +1682,50 @@ resource "aws_quicksight_analysis" "anomaly_detection" {
     aws_quicksight_data_set.demo_telco_packetloss_result_anomaly_flatten,
   ]
 }
-*/
+
+
 data "aws_iam_role" "quicksight_service_role" {
   name = "aws-quicksight-service-role-v0"
 }
 
 resource "aws_iam_policy" "quicksight_s3_access" {
   name        = "${var.project_name}-quicksight-s3-access"
-  description = "Allow QuickSight service role to read from test-telco-s3-bucket"
+  description = "Allow QuickSight service role to use Athena results and read Tableflow data"
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "QuickSightListTelcoBucket"
+        Sid    = "QuickSightListBucket"
         Effect = "Allow"
         Action = [
-          "s3:ListBucket"
+          "s3:ListBucket",
+          "s3:GetBucketLocation",
+          "s3:ListBucketMultipartUploads"
         ]
         Resource = "arn:aws:s3:::${aws_s3_bucket.tableflow_byob_bucket.bucket}"
       },
       {
-        Sid    = "QuickSightGetTelcoObjects"
+        Sid    = "QuickSightReadIcebergData"
         Effect = "Allow"
         Action = [
           "s3:GetObject",
           "s3:GetObjectVersion"
         ]
         Resource = "arn:aws:s3:::${aws_s3_bucket.tableflow_byob_bucket.bucket}/*"
+      },
+      {
+        Sid    = "QuickSightWriteAthenaResults"
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:AbortMultipartUpload",
+          "s3:DeleteObject"
+        ]
+        Resource = "arn:aws:s3:::${aws_s3_bucket.tableflow_byob_bucket.bucket}/output/*"
       }
     ]
   })
 }
+*/
 
-resource "aws_iam_role_policy_attachment" "quicksight_s3_access_attach" {
-  role       = data.aws_iam_role.quicksight_service_role.name
-  policy_arn = aws_iam_policy.quicksight_s3_access.arn
-}

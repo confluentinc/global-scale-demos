@@ -19,7 +19,9 @@ variable "project_name" {
   type        = string
 }
 
+/*
 variable "qs_username" {
   description = "The QuickSight username for which the permissions will be granted. This should be the username of an existing QuickSight user in your AWS account."
   type        = string
 }
+*/
