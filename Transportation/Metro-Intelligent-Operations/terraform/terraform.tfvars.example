@@ -1,0 +1,19 @@
+confluent_cloud_api_key    = "YOUR_CLOUD_RESOURCE_MANAGEMENT_API_KEY"
+confluent_cloud_api_secret = "YOUR_CLOUD_RESOURCE_MANAGEMENT_API_SECRET"
+project_name               = "metro-demo-2" # must be unique for you; used to name every resource
+
+# Optional overrides (defaults shown)
+# cloud                   = "AWS"
+# region                  = "ap-south-1"
+# flink_max_cfu           = 10
+# run_producer_container  = true
+# live_map_port           = 8765
+# train_headway_seconds   = 600
+# producer_time_scale     = 1.0
+
+# Phase 2 (optional): surge detection + AWS Bedrock dispatch recommendation.
+# Leave enable_surge_detection unset/false to skip this phase entirely.
+# enable_surge_detection = true
+# bedrock_aws_access_key = "YOUR_AWS_ACCESS_KEY_ID"
+# bedrock_aws_secret_key = "YOUR_AWS_SECRET_ACCESS_KEY"
+# bedrock_model_endpoint = "https://bedrock-runtime.us-east-1.amazonaws.com/model/us.anthropic.claude-sonnet-4-5-20250929-v1:0/invoke"
