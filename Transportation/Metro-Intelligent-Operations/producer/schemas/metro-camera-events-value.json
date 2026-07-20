@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MetroCameraEvent",
+  "type": "object",
+  "properties": {
+    "event_type": { "type": "string" },
+    "timestamp": { "type": "string" },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "metro_line": { "type": "string" },
+        "train_id": { "type": "string" },
+        "direction": { "type": "string" },
+        "coach_number": { "type": "string" }
+      },
+      "required": ["metro_line", "train_id", "direction", "coach_number"]
+    },
+    "location": {
+      "type": "object",
+      "properties": {
+        "current_station": { "type": "string" },
+        "next_station": { "type": "string" }
+      },
+      "required": ["current_station", "next_station"]
+    },
+    "telemetry": {
+      "type": "object",
+      "properties": {
+        "headcount": { "type": "integer" },
+        "doors_locked": { "type": "boolean" },
+        "speed_kmh": { "type": "number" }
+      },
+      "required": ["headcount", "doors_locked", "speed_kmh"]
+    }
+  },
+  "required": ["event_type", "timestamp", "metadata", "location", "telemetry"]
+}

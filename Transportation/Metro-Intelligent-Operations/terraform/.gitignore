@@ -1,0 +1,9 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+generated.env
+*.tfplan
+# .terraform.lock.hcl is deliberately NOT ignored -- Terraform recommends
+# committing it so `terraform init` makes the same provider version choices
+# for everyone.

@@ -1,0 +1,234 @@
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+#map {
+  height: 100%;
+  width: 100%;
+  background: #e8e8e0;
+}
+
+#panel {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(6px);
+  padding: 12px 16px;
+  border-radius: 10px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22);
+  max-width: 260px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+}
+
+#panel h1 {
+  font-size: 15px;
+  margin: 0 0 6px 0;
+}
+
+#status {
+  font-size: 12px;
+  color: #555;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #bbb;
+}
+
+.status-dot.live {
+  background: #2ecc71;
+  animation: statusPulse 1.8s infinite;
+}
+
+.status-dot.down {
+  background: #e74c3c;
+}
+
+@keyframes statusPulse {
+  0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.55); }
+  70% { box-shadow: 0 0 0 7px rgba(46, 204, 113, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+}
+
+.line-selector {
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 8px;
+}
+
+.line-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.line-toggle input {
+  margin: 0;
+  cursor: pointer;
+}
+
+.line-toggle-all {
+  font-weight: 700;
+  padding-bottom: 3px;
+  margin-bottom: 2px;
+  border-bottom: 1px dashed #ddd;
+}
+
+.line-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+
+#stats {
+  font-size: 11px;
+  color: #333;
+}
+
+.train-marker {
+  /* width/height are set inline by Leaflet from iconSize (app.js) and match
+     this exactly -- no CSS transform here, so there's no second, competing
+     centering calculation that could drift the badge off the track.
+     Deliberately NOT setting position here: Leaflet's own stylesheet already
+     sets `.leaflet-marker-icon { position: absolute }`, which is what
+     actually places every marker via its transform AND is what lets the
+     .train-badge child below position against it via its own
+     `position: absolute`. Overriding it to `relative` drops the marker back
+     into normal document flow, stacking it down the page instead of sitting
+     at its transformed position -- this was the real cause of an earlier
+     "trains scattered off the track" bug. */
+  width: 32px;
+  height: 20px;
+}
+
+/* The visible badge. Color comes from an inline style (LINE_COLORS in
+   app.js), not a per-line CSS class -- scales to any number of lines.
+   Deliberately static (no pulse animation) -- only a real, detected surge
+   (.surge-ring below) should draw the eye with movement; a badge blinking on
+   every single train made surges harder to notice, not easier. */
+.train-badge {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border-radius: 10px;
+  border: 2px solid white;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  white-space: nowrap;
+}
+
+/* Small fixed-size anchor (matches iconSize/iconAnchor in app.js exactly).
+   Deliberately NOT setting position here -- same reason as .train-marker
+   above: Leaflet's own `.leaflet-marker-icon { position: absolute }` must
+   stay in control of placement, or this drops into normal document flow. */
+.surge-marker {
+  width: 20px;
+  height: 20px;
+}
+
+/* The pulsing alert ring -- the only pulsing element on the map now, so a
+   real detected surge draws the eye without competing with normal train
+   markers. Every keyframe re-states the full `translate(-50%, -50%)`
+   centering alongside the scale, because a keyframe's `transform` replaces
+   the base value entirely rather than composing with it; dropping the
+   translate from just the keyframes (not the base rule) would silently
+   re-open the same "marker drifts off-point" class of bug documented for
+   .train-marker above. */
+.surge-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 4px solid #ff2d2d;
+  transform: translate(-50%, -50%) scale(0.6);
+  animation: surgePulse 1.3s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes surgePulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.6);
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(255, 45, 45, 0.7);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.3);
+    opacity: 0;
+    box-shadow: 0 0 20px 10px rgba(255, 45, 45, 0);
+  }
+}
+
+/* Color comes from an inline style (border-left-color) set in app.js. */
+.segment-label {
+  background: rgba(20, 20, 20, 0.92);
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 12px;
+  white-space: nowrap;
+  transform: translate(-50%, -160%);
+  border-left: 4px solid #999;
+  display: inline-block;
+}
+
+.segment-label-sub {
+  font-weight: 400;
+  font-size: 10px;
+  opacity: 0.85;
+}
+
+.station-tooltip {
+  font-size: 11px;
+}
+
+.station-label-permanent {
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  box-shadow: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1a1a1a;
+  padding: 1px 4px;
+}
+
+.station-label-permanent::before {
+  display: none;
+}
+
+.area-label {
+  color: #444;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff, 0 0 6px #fff;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
