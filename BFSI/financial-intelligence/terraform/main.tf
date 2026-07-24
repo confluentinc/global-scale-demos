@@ -25,6 +25,10 @@ terraform {
       source  = "hashicorp/time"
       version = "~> 0.14.0"
     }
+    http = {
+      source  = "hashicorp/http"
+      version = "~> 3.4"
+    }
   }
 }
 
@@ -62,13 +66,33 @@ resource "aws_db_subnet_group" "postgres_public_subnet_group" {
   subnet_ids = data.aws_subnets.public.ids
 }
 
+data "confluent_ip_addresses" "connect_egress" {
+  filter {
+    clouds        = ["AWS"]
+    regions       = [var.aws_region]
+    services      = ["CONNECT"]
+    address_types = ["EGRESS"]
+  }
+}
+
+data "http" "my_ip" {
+  url = "https://checkip.amazonaws.com"
+}
+
+locals {
+  my_ip_address = chomp(data.http.my_ip.response_body)
+}
+
 resource "aws_security_group" "instance" {
   name = "${var.project_name}-sg"
   ingress {
-    from_port   = var.postgres_database_port
-    to_port     = var.postgres_database_port
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port = var.postgres_database_port
+    to_port   = var.postgres_database_port
+    protocol  = "tcp"
+    cidr_blocks = concat(
+      ["${local.my_ip_address}/32"],
+      [for ip in data.confluent_ip_addresses.connect_egress.ip_addresses : "${ip.ip_prefix}"]
+    )
   }
 }
 
@@ -602,7 +626,7 @@ resource "confluent_flink_compute_pool" "main" {
   display_name = "${var.project_name}-flink-pool"
   cloud        = "AWS"
   region       = var.aws_region
-  max_cfu      = 10
+  max_cfu      = 20
   environment {
     id = confluent_environment.confluent_project_env.id
   }
