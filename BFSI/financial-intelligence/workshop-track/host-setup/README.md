@@ -124,6 +124,11 @@ user_pool_size                = 100
 ```bash
 docker compose up -d --build
 docker compose logs -f
+
+or 
+
+docker-compose up -d --build
+docker-compose logs -f
 ```
 
 **Directly with Python:**
@@ -155,6 +160,10 @@ the same underlying data, which is a fine talking point).
 
 ```bash
 docker compose down
+
+or 
+
+docker-compose down
 ```
 
 Then delete or pause the Atlas cluster if it was created solely for this workshop.

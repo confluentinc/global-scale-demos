@@ -15,6 +15,14 @@ hand.
 
 ---
 
+## Architecture
+
+<div align="center" padding=25px>
+    <img src="../assets/images/architecture.png" width=90% height=90%>
+</div>
+
+---
+
 ## Step 1: Prerequisites
 
 ### Accounts
@@ -99,8 +107,11 @@ can freely name things without colliding with anyone else in the room.
     <img src="../../../../common-modules/assets/images/aws-create-flink-pool-1.png" width=60% height=60%>
 </div>
 
-3. Max CFU: **10** is plenty for the three statements in this workshop.
+3. Max CFU: **10** to start.
 4. Name it e.g. `finintel-flink-pool`.
+5. Once you're running all six Flink statements in Step 4, come back here and edit the
+   compute pool to raise **Max CFU to 20** — six concurrently running statements need
+   more headroom than 10 CFU provides.
 
 <div align="center" padding=25px>
     <img src="../../../../common-modules/assets/images/aws-create-flink-pool-2.png" width=60% height=60%>
