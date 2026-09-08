@@ -83,13 +83,11 @@ can freely name things without colliding with anyone else in the room.
     <img src="../../../../common-modules/assets/images/cluster-type.png" width=90% height=90%>
 </div>
 
-3. Cloud provider: **AWS**. Region: pick whatever your instructor used for the shared
-   MongoDB, or any region close to you — the connector works cross-region, it just
-   adds a little latency.
+3. Cloud provider: **AWS**. Region: **us-east-1 (N. Virginia)**.
 4. Name it e.g. `finintel-cluster`.
 
 <div align="center" padding=25px>
-    <img src="../../../../common-modules/assets/images/create-cluster.png" width=70% height=70%>
+    <img src="../../../../common-modules/assets/images/aws-create-cluster.png" width=70% height=70%>
 </div>
 
 ### 2.3 Create a Flink compute pool
@@ -100,17 +98,17 @@ can freely name things without colliding with anyone else in the room.
     <img src="../../../../common-modules/assets/images/create-flink-pool-1.png" width=70% height=70%>
 </div>
 
-2. Same cloud/region as your Kafka cluster.
+2. Cloud provider **AWS**, region **us-east-1** — same as your Kafka cluster.
 
 <div align="center" padding=25px>
-    <img src="../../../../common-modules/assets/images/create-flink-pool-2.png" width=60% height=60%>
+    <img src="../../../../common-modules/assets/images/aws-create-flink-pool-1.png" width=60% height=60%>
 </div>
 
 3. Max CFU: **10** is plenty for the three statements in this workshop.
 4. Name it e.g. `finintel-flink-pool`.
 
 <div align="center" padding=25px>
-    <img src="../../../../common-modules/assets/images/create-flink-pool-3.png" width=60% height=60%>
+    <img src="../../../../common-modules/assets/images/aws-create-flink-pool-2.png" width=60% height=60%>
 </div>
 
 ### 2.4 Create a Kafka API key
@@ -234,14 +232,23 @@ at the top level.
 ## Step 4: The Flink SQL Pipeline
 
 Open **Flink → Workspaces** in the console, create a new workspace against your compute
-pool, and set the catalog/database to your environment/cluster.
+pool. Optionally rename it (click the settings button, update the name, **Save
+changes**).
 
 <div align="center" padding=25px>
-    <img src="../../../../common-modules/assets/images/flink-workspace-2.png" width=60% height=60%>
+    <img src="../../../../common-modules/assets/images/aws-flink-workspace-1.png" width=90% height=90%>
 </div>
 
+Set the **Catalog** to your environment name.
+
 <div align="center" padding=25px>
-    <img src="../../../../common-modules/assets/images/flink-workspace-3.png" width=60% height=60%>
+    <img src="../../../../common-modules/assets/images/aws-flink-workspace-2.png" width=60% height=60%>
+</div>
+
+Set the **Database** to your cluster name.
+
+<div align="center" padding=25px>
+    <img src="../../../../common-modules/assets/images/aws-flink-workspace-3.png" width=60% height=60%>
 </div>
 
 Run each statement below **in order**, one at a time, and confirm it reaches `RUNNING`
