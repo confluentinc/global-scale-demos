@@ -1,0 +1,8 @@
+[mongodb]
+uri      = mongodb+srv://<rw-user>:<password>@<your-atlas-cluster>.mongodb.net/
+database = finintel
+
+[simulation]
+target_tps                   = 10
+valid_transaction_percentage = 95.0
+user_pool_size                = 100

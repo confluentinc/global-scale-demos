@@ -1,0 +1,7 @@
+services:
+  mongo-datagen:
+    build: .
+    container_name: finintel-workshop-mongo-datagen
+    restart: unless-stopped
+    volumes:
+      - ./config.ini:/app/config.ini:ro
