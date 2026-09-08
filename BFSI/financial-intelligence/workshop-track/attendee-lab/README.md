@@ -3,17 +3,6 @@
 You're building a real-time financial intelligence pipeline on **Confluent Cloud**, by
 hand.
 
-A shared MongoDB instance (managed by your instructor) is continuously receiving:
-
-- `user_profiles` — simulated user/account profile documents
-- `payments` — simulated payment transactions between accounts, including patterns
-  designed to trip fraud rules (impossible travel, rapid device switching, amount
-  anomalies)
-
-Everyone in the room reads from the **same** MongoDB data, but each of you streams it
-into your **own, separate Confluent Cloud environment** and runs your own connector
-and Flink SQL statements against it. Nothing you do here affects anyone else.
-
 This workshop runs entirely on a Confluent Cloud account — no AWS account, no
 Postgres, and no Docker needed on your end.
 
@@ -63,6 +52,10 @@ Log in to [confluent.cloud](https://confluent.cloud) and confirm you can see the
 "Environments" page. If this is a brand-new account you may be prompted to create your
 first environment — hold off, that's covered explicitly in Step 2 below.
 
+<div align="center" padding=25px>
+    <img src="../../../../common-modules/assets/images/login.png" width=50% height=50%>
+</div>
+
 ---
 
 ## Step 2: Your Confluent Cloud Environment
@@ -77,43 +70,73 @@ can freely name things without colliding with anyone else in the room.
 3. Choose the **Essentials** stream governance package — that's all this workshop
    needs.
 
+<div align="center" padding=25px>
+    <img src="../../../../common-modules/assets/images/environment.png" width=50% height=50%>
+</div>
+
 ### 2.2 Create a Kafka cluster
 
 1. Inside your new environment, **Add cluster**.
 2. Choose **Basic** (cheapest, sufficient for workshop TPS).
+
+<div align="center" padding=25px>
+    <img src="../../../../common-modules/assets/images/cluster-type.png" width=90% height=90%>
+</div>
+
 3. Cloud provider: **AWS**. Region: pick whatever your instructor used for the shared
    MongoDB, or any region close to you — the connector works cross-region, it just
    adds a little latency.
 4. Name it e.g. `finintel-cluster`.
 
+<div align="center" padding=25px>
+    <img src="../../../../common-modules/assets/images/create-cluster.png" width=70% height=70%>
+</div>
+
 ### 2.3 Create a Flink compute pool
 
 1. In the left nav, go to **Flink** → **Compute Pools** → **Create compute pool**.
+
+<div align="center" padding=25px>
+    <img src="../../../../common-modules/assets/images/create-flink-pool-1.png" width=70% height=70%>
+</div>
+
 2. Same cloud/region as your Kafka cluster.
+
+<div align="center" padding=25px>
+    <img src="../../../../common-modules/assets/images/create-flink-pool-2.png" width=60% height=60%>
+</div>
+
 3. Max CFU: **10** is plenty for the three statements in this workshop.
 4. Name it e.g. `finintel-flink-pool`.
 
-### 2.4 Create a service account and API keys
+<div align="center" padding=25px>
+    <img src="../../../../common-modules/assets/images/create-flink-pool-3.png" width=60% height=60%>
+</div>
 
-You'll need:
+### 2.4 Create a Kafka API key
 
-- **One service account** (e.g. `finintel-app-manager`) with:
-  - `CloudClusterAdmin` on your Kafka cluster
-  - `FlinkAdmin` on your environment
-- **A Kafka API key** and a **Flink API key**, both owned by that service account.
+No service account needed — since this is your own account, you're already the owner
+of everything in it. The Flink SQL workspace in the console authenticates as you
+automatically, so the only credential you need to create by hand is a Kafka API key
+for the connectors in Step 3.
 
-In the Console: **Environment → Access → Service Accounts → Add service account**, then
-assign the role bindings above. API keys can be generated from the cluster's
-**API Keys** tab and the **Flink → API Keys** tab respectively — select "Service
-account" as the owner and pick the one you just created.
+In the Console: go to your cluster's **API Keys** tab → **Add key** → **My account**
+(not "Service account") → this generates a key/secret scoped to your own user
+identity, with access to everything you own.
 
-> **Tip:** Keep this browser tab open, or note the API key/secret pairs somewhere safe
-> (a password manager, not a shared doc) — you'll paste them into the Flink SQL
-> workspace connection settings and the connector config in the next step.
+<div align="center" padding=25px>
+    <img src="../../../../common-modules/assets/images/create-apikey-updated.png" width=75% height=75%>
+</div>
 
-**Checkpoint:** one environment, one Basic Kafka cluster, one Flink compute pool, one
-service account with `CloudClusterAdmin` + `FlinkAdmin`, and a Kafka + Flink API key
-pair.
+<div align="center" padding=25px>
+    <img src="../../../../common-modules/assets/images/create-apikey-download.png" width=75% height=75%>
+</div>
+
+> **Tip:** Note the API key/secret somewhere safe (a password manager, not a shared
+> doc) — you'll paste it into the connector config in the next step.
+
+**Checkpoint:** one environment, one Basic Kafka cluster, one Flink compute pool, and
+one Kafka API key tied to your user account.
 
 ---
 
@@ -134,7 +157,8 @@ independently.
    - **Username / Password**: the read-only credentials
    - **Database**: `finintel`
    - **Collection**: `payments`
-3. **Kafka credentials**: use the service account you created in Step 2.4.
+3. **Kafka credentials**: use the API key you created in Step 2.4 (or select "My
+   account" directly in the wizard if it offers that option).
 4. **Output format**: Avro, for both key and value (matches Schema Registry, and keeps
    the Flink SQL in Step 4 simple).
 5. **Topic prefix**: set this to `cdc`.
@@ -157,8 +181,9 @@ wizard, here's the equivalent config (fill in the placeholders):
     "connector.class": "MongoDbAtlasSource",
     "name": "finintel-payments-source",
 
-    "kafka.auth.mode": "SERVICE_ACCOUNT",
-    "kafka.service.account.id": "<YOUR_CONNECTOR_SERVICE_ACCOUNT_ID>",
+    "kafka.auth.mode": "KAFKA_API_KEY",
+    "kafka.api.key": "<YOUR_KAFKA_API_KEY>",
+    "kafka.api.secret": "<YOUR_KAFKA_API_SECRET>",
 
     "connection.host": "<YOUR_ATLAS_CLUSTER_HOST>",
     "connection.user": "<READ_ONLY_USERNAME_FROM_HOST>",
@@ -209,9 +234,18 @@ at the top level.
 ## Step 4: The Flink SQL Pipeline
 
 Open **Flink → Workspaces** in the console, create a new workspace against your compute
-pool, and set the catalog/database to your environment/cluster. Run each statement
-below **in order**, one at a time, and confirm it reaches `RUNNING` before moving to
-the next.
+pool, and set the catalog/database to your environment/cluster.
+
+<div align="center" padding=25px>
+    <img src="../../../../common-modules/assets/images/flink-workspace-2.png" width=60% height=60%>
+</div>
+
+<div align="center" padding=25px>
+    <img src="../../../../common-modules/assets/images/flink-workspace-3.png" width=60% height=60%>
+</div>
+
+Run each statement below **in order**, one at a time, and confirm it reaches `RUNNING`
+before moving to the next.
 
 ### 4.0 Source views
 
@@ -540,11 +574,23 @@ workshop ends.
 **Flink → Compute Pools → your pool → Delete.** Compute pools bill by CFU-hour while
 they exist, whether or not statements are running against them.
 
+<div align="center" padding=25px>
+    <img src="../../../../common-modules/assets/images/flink-delete-compute-pool.png" width=75% height=75%>
+</div>
+
 ### 6.4 Delete the Kafka cluster and environment
 
 **Environment → your cluster → Delete**, then delete the environment itself. This also
 removes the Tableflow-managed storage created in Step 5 — it's scoped to the topic/
 environment, nothing external to clean up.
+
+<div align="center" padding=25px>
+    <img src="../../../../common-modules/assets/images/delete-cluster.png" width=75% height=75%>
+</div>
+
+<div align="center" padding=25px>
+    <img src="../../../../common-modules/assets/images/delete-environment.png" width=75% height=75%>
+</div>
 
 ### Full teardown, fastest path
 
@@ -569,8 +615,8 @@ against your streaming `account_daily_ledger` data directly.
 
 1. In your cluster, select the `account_daily_ledger` topic → enable **Real-Time
    Context Engine** from the topic's settings.
-2. Generate a **global API key** for your `app-manager`-equivalent service account
-   (Environment → Access → API Keys → Add key → scope: Global, not tied to one cluster).
+2. Generate a **global API key** for your user account (Environment → Access →
+   API Keys → Add key → owner: My account → scope: Global, not tied to one cluster).
 3. Build the MCP endpoint URL:
 
    ```
@@ -595,3 +641,11 @@ against your streaming `account_daily_ledger` data directly.
 
 6. Ask your assistant a question about live account activity and watch it query the
    stream directly.
+
+<div align="center" padding=25px>
+    <img src="../../../../common-modules/assets/images/mcp-server-verification.png" width=60% height=60%>
+</div>
+
+The screenshot above shows an MCP client's server settings as an example of what a
+successful connection looks like — your assistant, tool names, and available topics
+will differ (you'll see `account_daily_ledger`, not the topics pictured).
