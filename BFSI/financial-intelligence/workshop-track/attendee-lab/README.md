@@ -36,7 +36,6 @@ Get these from your instructor before Step 3:
 
 - MongoDB connection host/URI (read-only user)
 - Database name: `finintel`
-- Collection names: `user_profiles`, `payments`
 
 ### Optional but recommended
 
@@ -140,92 +139,60 @@ one Kafka API key tied to your user account.
 
 ## Step 3: MongoDB Atlas Source Connector
 
-This connector streams a MongoDB collection into a topic in **your own** Kafka
-cluster. The connector is configured for **one collection at a time**, so you'll add
-it **twice** — once for `user_profiles`, once for `payments`. Every attendee runs their
-own copies against the same MongoDB instance — you're all reading the same source data
-independently.
+One connector reads the whole `finintel` database and creates one topic per
+collection automatically — you don't pick collections one at a time. Every attendee
+runs their own copy against the same MongoDB instance — you're all reading the same
+source data independently.
 
-### 3.1 Add the connector for `payments`
+### 3.1 Add the connector
 
 1. In your cluster, go to **Connectors** → search for **MongoDB Atlas Source** →
    **Add connector**.
-2. Fill in the connection details your instructor gave you:
-   - **Connection host**: the Atlas cluster host
-   - **Username / Password**: the read-only credentials
-   - **Database**: `finintel`
-   - **Collection**: `payments`
-3. **Kafka credentials**: use the API key you created in Step 2.4 (or select "My
-   account" directly in the wizard if it offers that option).
-4. **Output format**: Avro, for both key and value (matches Schema Registry, and keeps
-   the Flink SQL in Step 4 simple).
-5. **Topic prefix**: set this to `cdc`.
-6. **Important — publish full document only**: turn on the setting for publishing
-   only the current document (`publish.full.document.only`), not the full change-stream
-   event. Without it, the connector emits `{_id, operationType, documentKey,
-   fullDocument, ns, ...}` instead of the document's fields directly at the top level,
-   and the Flink SQL in Step 4 won't find columns like `user_id` or `amount` where it
-   expects them.
-7. Launch the connector with **1 task** — that's enough for workshop TPS.
-8. Name it something you'll recognize later, e.g. `finintel-payments-source`.
+2. Enter the following configuration details. The remaining fields can be left blank
+   or default.
 
-If you're configuring the connector via the Confluent CLI or API instead of the UI
-wizard, here's the equivalent config (fill in the placeholders):
+| Setting                            | Value                          |
+|-------------------------------------|---------------------------------|
+| Topic prefix                       | `cdc`                          |
+| API Key                            | *the Kafka API key from Step 2.4* |
+| API Secret                         | *the Kafka API secret from Step 2.4* |
+| Connection host                    | *the Atlas cluster host your instructor gave you* |
+| Connection user                    | *the read-only username your instructor gave you* |
+| Connection password                | *the read-only password your instructor gave you* |
+| Database name                      | `finintel`                     |
+| Output Kafka record value format   | AVRO                           |
+| Publish full document only         | `true`                         |
+| Startup mode                       | `copy_existing`                |
+| Tasks                              | 1                              |
+| Name                               | `finintel-mongodb-source`      |
 
-```json
-{
-  "name": "finintel-payments-source",
-  "config": {
-    "connector.class": "MongoDbAtlasSource",
-    "name": "finintel-payments-source",
+Two settings are worth calling out:
 
-    "kafka.auth.mode": "KAFKA_API_KEY",
-    "kafka.api.key": "<YOUR_KAFKA_API_KEY>",
-    "kafka.api.secret": "<YOUR_KAFKA_API_SECRET>",
+- **Publish full document only (`true`)** — without this, the connector emits a full
+  change-stream event (`{_id, operationType, documentKey, fullDocument, ns, ...}`)
+  instead of the document's fields directly at the top level, and the Flink SQL in
+  Step 4 won't find columns like `user_id` or `amount` where it expects them.
+- **Startup mode (`copy_existing`)** — this copies the collections' existing documents
+  first, then continues streaming new changes, so you see data immediately instead of
+  waiting for the next change to happen.
 
-    "connection.host": "<YOUR_ATLAS_CLUSTER_HOST>",
-    "connection.user": "<READ_ONLY_USERNAME_FROM_HOST>",
-    "connection.password": "<READ_ONLY_PASSWORD_FROM_HOST>",
+3. Review your selections and **Launch**.
 
-    "database": "finintel",
-    "collection": "payments",
+### 3.2 Verify
 
-    "topic.prefix": "cdc",
+Once the connector reaches **Running**:
 
-    "output.data.format": "AVRO",
-    "output.key.format": "AVRO",
-
-    "publish.full.document.only": "true",
-
-    "tasks.max": "1"
-  }
-}
-```
-
-### 3.2 Add the connector for `user_profiles`
-
-Repeat step 3.1 exactly, but with **Collection**: `user_profiles` and connector name
-`finintel-user-profiles-source`.
-
-> **Note:** Confluent Cloud's exact config field names can change between console
-> versions — the UI wizard is the source of truth; use the JSON above only as a
-> reference for what each setting corresponds to. Your instructor will confirm the
-> current field names on the day.
-
-### 3.3 Verify
-
-Once both connectors reach **Running**:
-
-1. Go to **Topics** in your cluster. You should see two new topics:
-   `cdc.finintel.user_profiles` and `cdc.finintel.payments`.
+1. Go to **Topics** in your cluster. You should see two new topics appear
+   automatically — one per collection: `cdc.finintel.user_profiles` and
+   `cdc.finintel.payments`.
 2. Open the **Messages** tab on `cdc.finintel.payments` and confirm you see live
    documents flowing in — top-level fields like `transaction_id`, `user_id`, `amount`,
    `address.city`, etc. — **not** wrapped in a change-stream envelope. If you do see an
    envelope (fields like `operationType`, `fullDocument`, `ns`), go back and turn on
-   `publish.full.document.only` before continuing.
+   **Publish full document only** before continuing.
 
-**Checkpoint:** two topics, actively receiving records, with flattened document fields
-at the top level.
+**Checkpoint:** one connector running, two topics actively receiving records, with
+flattened document fields at the top level.
 
 ---
 
@@ -251,24 +218,16 @@ Set the **Database** to your cluster name.
     <img src="../../../../common-modules/assets/images/aws-flink-workspace-3.png" width=60% height=60%>
 </div>
 
+Kafka topics and schemas are always in sync with Flink — any topic created by the
+connector in Step 3 is visible directly as a table in Flink, under its full topic name.
+The statements below reference the connector's output topic directly as
+`` `cdc.finintel.payments` `` — no view or alias needed first. (The other topic the
+connector created, `` `cdc.finintel.user_profiles` ``, isn't used by the three core
+statements below, but you can query it the same way if you want to explore joining
+transaction activity back to user profile attributes.)
+
 Run each statement below **in order**, one at a time, and confirm it reaches `RUNNING`
 before moving to the next.
-
-### 4.0 Source views
-
-Aliases the raw source topics from Step 3 as `payments` and `user_profiles` so the
-statements below don't need any topic-name plumbing.
-
-```sql
-CREATE VIEW payments AS
-SELECT * FROM `cdc.finintel.payments`;
-
--- Not required by the three core statements below (account_daily_ledger,
--- fraudulent_alerts, upsell_opportunities all key off `payments` only), but useful if
--- you want to explore joining transaction activity back to user profile attributes.
-CREATE VIEW user_profiles AS
-SELECT * FROM `cdc.finintel.user_profiles`;
-```
 
 ### 4.1 `account_daily_ledger`
 
@@ -300,13 +259,13 @@ WITH normalized_ledger AS (
            amount           AS received_amount,
            0                AS debited_amount,
            `$rowtime`       AS rt
-    FROM payments
+    FROM `cdc.finintel.payments`
     UNION ALL
     SELECT payer_account_no AS account_no,
            0                AS received_amount,
            amount           AS debited_amount,
            `$rowtime`       AS rt
-    FROM payments
+    FROM `cdc.finintel.payments`
 )
 SELECT
     account_no,
@@ -326,7 +285,7 @@ GROUP BY account_no, window_start, window_end;
 
 ### 4.2 `fraudulent_alerts`
 
-Three fraud patterns detected over the same `payments` stream:
+Three fraud patterns detected over the same `cdc.finintel.payments` stream:
 
 - **Impossible travel** — a `MATCH_RECOGNIZE` pattern flags consecutive transactions
   from the same user in different countries less than 10 minutes apart.
@@ -352,7 +311,7 @@ WITH flattened_payments AS (
     SELECT transaction_id, user_id, user_name, device_id,
            payment_method, amount, `$rowtime` AS ts,
            address.country AS country
-    FROM payments
+    FROM `cdc.finintel.payments`
 ),
 
 impossible_travel_alerts AS (
@@ -509,9 +468,9 @@ SELECT * FROM upsell_opportunities WHERE priority = 'HIGH' LIMIT 10;
 You should see rows appearing within a few minutes, assuming the host's data generator
 (`../host-setup/`) is running.
 
-**Checkpoint:** five statements running (`account_daily_ledger`, `fraudulent_alerts`,
-and `upsell_opportunities` each have a CREATE + INSERT pair, all `RUNNING`), plus the
-two source views.
+**Checkpoint:** three tables, each with a CREATE + INSERT pair, all `RUNNING`
+(`account_daily_ledger`, `fraudulent_alerts`, `upsell_opportunities` — six statements
+total).
 
 ---
 
@@ -569,12 +528,11 @@ Deleting the INSERT statements is enough to stop billing for the streaming jobs;
 CREATE TABLE statements and the tables themselves can stay if you want to keep
 exploring the data already produced, or delete them too for a full teardown.
 
-### 6.2 Delete the connectors
+### 6.2 Delete the connector
 
-**Connectors → `finintel-payments-source` and `finintel-user-profiles-source` →
-Delete.** This stops reading from the shared MongoDB — please do this before you leave
-so the shared Mongo instance isn't serving read load from idle connectors after the
-workshop ends.
+**Connectors → `finintel-mongodb-source` → Delete.** This stops reading from the
+shared MongoDB — please do this before you leave so the shared Mongo instance isn't
+serving read load from idle connectors after the workshop ends.
 
 ### 6.3 Delete the Flink compute pool
 
@@ -652,7 +610,3 @@ against your streaming `account_daily_ledger` data directly.
 <div align="center" padding=25px>
     <img src="../../../../common-modules/assets/images/mcp-server-verification.png" width=60% height=60%>
 </div>
-
-The screenshot above shows an MCP client's server settings as an example of what a
-successful connection looks like — your assistant, tool names, and available topics
-will differ (you'll see `account_daily_ledger`, not the topics pictured).

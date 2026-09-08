@@ -7,13 +7,14 @@ the [attendee guide](../attendee-lab/README.md).
 ## Overview
 
 Each attendee provisions their own Confluent Cloud environment and builds a real-time
-financial intelligence pipeline by hand: two MongoDB Atlas Source connectors, three
+financial intelligence pipeline by hand: one MongoDB Atlas Source connector, three
 Flink SQL statements, and Tableflow.
 
 The only shared piece is the source data: a MongoDB instance, run by you, continuously
 receiving simulated `user_profiles` and `payments` documents. Every attendee points
-their own MongoDB Atlas Source connectors at that same Mongo instance (one connector
-per collection), so everyone streams from one live, shared dataset into their own,
+their own MongoDB Atlas Source connector at that same Mongo instance — one connector
+per attendee reads the whole database and creates a topic per collection
+automatically — so everyone streams from one live, shared dataset into their own,
 fully isolated Confluent Cloud cluster.
 
 No AWS account is needed anywhere in this workshop, for you or attendees.
@@ -26,8 +27,8 @@ No AWS account is needed anywhere in this workshop, for you or attendees.
    └────────────────────┘                              └──────────────┬───────────────┘
                                                                         │
                                      each attendee configures their own │ MongoDB Atlas
-                                     connectors (one per collection)    │ Source Connectors
-                                     against the same Mongo instance    ▼
+                                     connector against the same Mongo   │ Source Connector
+                                     instance (whole database, 1 conn.) ▼
         ┌───────────────────────────────────────────────────────────────────────────┐
         │  Attendee's own Confluent Cloud Environment                              │
         │                                                                          │
@@ -47,26 +48,25 @@ No AWS account is needed anywhere in this workshop, for you or attendees.
    backlog data to demo change-stream catch-up (10 min, before attendees arrive).
 2. Attendees: Prerequisites (10 min)
 3. Attendees: Confluent Cloud environment/cluster/compute pool (20 min)
-4. Attendees: MongoDB Atlas Source connectors (25 min)
+4. Attendees: MongoDB Atlas Source connector (25 min)
 5. Attendees: Flink SQL pipeline (60 min)
 6. Attendees: Tableflow (20 min)
 7. Attendees: Cleanup (10 min)
 
 All attendee-facing steps live in the [attendee guide](../attendee-lab/README.md).
 
-## Before the day: verify the connector
+## Before the day: dry-run the connector
 
-Confluent Cloud's MongoDB Atlas Source connector's exact config field names can change
-between console versions. Walk through the connector step once in the Confluent Cloud
-UI yourself and correct the connector section of the
-[attendee guide](../attendee-lab/README.md#step-3-mongodb-atlas-source-connector) if
-anything has changed.
+Walk through the connector setup in [Step 3 of the attendee guide](../attendee-lab/README.md#step-3-mongodb-atlas-source-connector)
+yourself once, end to end, against your MongoDB instance. Confirm the two topics show
+up and the documents land flattened (not wrapped in a change-stream envelope) before
+attendees arrive.
 
 ## The shared data feed
 
-It runs a continuous data generator that writes simulated financial data straight into
-a MongoDB database, which every attendee's own MongoDB Atlas Source connectors read
-from during the lab.
+A continuous data generator writes simulated financial data straight into a MongoDB
+database, which every attendee's own MongoDB Atlas Source connector reads from during
+the lab.
 
 ### What it does
 
@@ -134,9 +134,8 @@ python mongo_datagen.py
 ```
 
 Leave it running for the entire workshop. It's safe to `Ctrl+C` / stop the container
-between sessions — on restart it reuses existing users (`ON CONFLICT`-style upsert
-equivalent via Mongo's `_id` uniqueness) and keeps growing the pool and streaming
-payments.
+between sessions — on restart it upserts existing users by `_id` instead of duplicating
+them, and keeps growing the pool and streaming payments.
 
 ## Handing out access
 
@@ -146,12 +145,11 @@ Give each attendee, before Step 3 of the attendee guide:
   in Atlas: Database Access → Add New Database User → built-in role `read` scoped to
   the `finintel` database). Never hand out the read-write credentials this generator
   uses.
-- The **database name** (`finintel`) and **collection names**
-  (`user_profiles`, `payments`).
+- The **database name** (`finintel`).
 
-Every attendee's connector reads the exact same collections — the shared dataset is
-part of the exercise (they'll all see each other's simulated "impossible travel"
-alerts fire on the same underlying data, which is a fine talking point).
+Every attendee's connector reads the exact same data — the shared dataset is part of
+the exercise (they'll all see each other's simulated "impossible travel" alerts fire on
+the same underlying data, which is a fine talking point).
 
 ## Cleanup after the workshop
 
