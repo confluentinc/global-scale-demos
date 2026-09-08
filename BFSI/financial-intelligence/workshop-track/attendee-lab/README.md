@@ -3,9 +3,6 @@
 You're building a real-time financial intelligence pipeline on **Confluent Cloud**, by
 hand.
 
-This workshop runs entirely on a Confluent Cloud account — no AWS account, no
-Postgres, and no Docker needed on your end.
-
 ## Agenda
 
 1. [Prerequisites](#step-1-prerequisites)
@@ -27,8 +24,7 @@ Postgres, and no Docker needed on your end.
    include free credits that comfortably cover a workshop session. Use **your own**
    account/organization, separate from every other attendee.
 
-That's the only account you personally need. There is no AWS account, no Postgres, and
-no Docker required for this track.
+That's the only account you personally need.
 
 ### Access your instructor will give you
 

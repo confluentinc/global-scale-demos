@@ -42,15 +42,15 @@ No AWS account is needed anywhere in this workshop, for you or attendees.
         └───────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Suggested agenda (~2.5–3 hrs)
+## Suggested agenda (~2 hrs)
 
 1. You: confirm the generator below has been running for a few minutes so there's
-   backlog data to demo change-stream catch-up (10 min, before attendees arrive).
-2. Attendees: Prerequisites (10 min)
-3. Attendees: Confluent Cloud environment/cluster/compute pool (20 min)
-4. Attendees: MongoDB Atlas Source connector (25 min)
-5. Attendees: Flink SQL pipeline (60 min)
-6. Attendees: Tableflow (20 min)
+   backlog data to demo change-stream catch-up (before attendees arrive).
+2. Attendees: Prerequisites (5 min)
+3. Attendees: Confluent Cloud environment/cluster/compute pool (15 min)
+4. Attendees: MongoDB Atlas Source connector (20 min)
+5. Attendees: Flink SQL pipeline (50 min)
+6. Attendees: Tableflow (15 min)
 7. Attendees: Cleanup (10 min)
 
 All attendee-facing steps live in the [attendee guide](../attendee-lab/README.md).
